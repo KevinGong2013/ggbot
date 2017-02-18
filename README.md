@@ -163,11 +163,11 @@ type CountedContent struct {
 我们接着回头来看这个接口`MapMsgs`用来对所有的消息进行一个预处理，举个例子
 我们收到的红包提醒是这样的
 ```json
-{type = 1000, content = "Receive a redpacket,view on phone" }
+{type=1000, content="Receive a redpacket,view on phone" }
 ```
 由于网页端不支持红包消息，所以是以一个系统通知发过来的，我们可以把这条消息`map`为
 ```json
-{type = 99, content= "大红包，卧槽大红包 好激动" }
+{type=99, content="大红包，卧槽大红包 好激动" }
 ```
 在`HandleMsgs`方法中我们就可以判断只要`type=99` 就知道我们收到红包啦
 
