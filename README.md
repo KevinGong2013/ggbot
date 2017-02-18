@@ -202,10 +202,11 @@ wxbot.RegisterModule(convenience.DefaultMsgStream)
 ```
 #### step 4 处理消息
 ```go
-// 一共支持一下4种注册方式
+// 一共支持一下5种注册方式
 
+// /msg 所有的消息包括群聊和单聊
 // /msg/solo／GGBot 单聊的GGBot的消息
-// /msg/solo/ 剩下的所有单聊消息
+// /msg/solo 剩下的所有单聊消息
 // /msg/group/GGBot测试群 来自GGBot测试群的消息
 // /msg/group 剩下的所有群聊消息
 
