@@ -22,7 +22,7 @@
 由于本人做iOS出身，就从iOS端的微信出发 花了几天时间可以随时从服务端唤醒手机`app`(_好像可以做一些不好的事情，比如给你男朋友装个修改过的微信？_) 然后把小工具代码重构一下摇身一变成为一个机器人 并且他有一个很酷炫的名字 `GGBot`
 先看几张图，看个小视频 比较粗糙大家忍耐一下
 
-![cui 截图](http://7xnowv.com1.z0.glb.clouddn.com/Screen-cui.png)
+![cui 截图](./asset/cui.png)
 
 [后台抢红包演示](http://7xnowv.com1.z0.glb.clouddn.com/ggbot-demo.mp4)
 
@@ -41,7 +41,7 @@
 
 一张图胜过千言万语 把 `ggbot` 拖进记得浏览器然后 `--help`你就会看到下面的提示
 
-![看这里](http://7xnowv.com1.z0.glb.clouddn.com/useage.png)
+![看这里](./asset/help.png)
 
 #### 如何使用源码
 
