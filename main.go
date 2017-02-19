@@ -23,7 +23,7 @@ var logger = log.WithFields(log.Fields{
 
 var showCUI = flag.Bool(`cui`, false, `是否要启用图形界面 默认不启用`)
 var mediaPath = flag.String(`mp`, `.ggbot/media`, `多媒体文件存放根目录`)
-var dbPath = flag.String(`dp`, `.ggbot/media`, `联系人和消息存放目录`)
+var dbPath = flag.String(`dp`, `.ggbot/db`, `联系人和消息存放目录`)
 var debug = flag.Bool(`debug`, true, `是否以debug模式运行 默认false`)
 
 func main() {
