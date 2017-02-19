@@ -38,7 +38,7 @@ func main() {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	wxbot, err := wechat.WeekUp(nil)
+	wxbot, err := wechat.WakeUp(nil)
 	if err != nil {
 		logger.Error(err)
 		return

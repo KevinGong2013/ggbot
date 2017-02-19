@@ -60,7 +60,7 @@ go get -u -v github.com/KevinGong2013/ggbot/wechat
 
 import "github.com/KevinGong2013/ggbot/wechat"
 
-wxbot, _ := wechat.WeakUp(nil)
+wxbot, _ := wechat.WakeUp(nil)
 
 ```
 
