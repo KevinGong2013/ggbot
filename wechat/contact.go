@@ -260,6 +260,15 @@ func (wechat *WeChat) UserNameByNickName(nn string) (string, error) {
 	return string(bs), nil
 }
 
+// ContactByNickName search contact with nick name
+func (wechat *WeChat) ContactByNickName(nn string) (*Contact, error) {
+	un, err := wechat.UserNameByNickName(nn)
+	if err != nil {
+		return nil, err
+	}
+	return wechat.ContactByUserName(un)
+}
+
 func (wechat *WeChat) saveContactToCache(contact map[string]interface{}) {
 	un, _ := contact[`UserName`].(string)
 	bs, e := json.Marshal(contact)

@@ -13,8 +13,8 @@ import (
 	"github.com/KevinGong2013/ggbot/modules/echo"
 	"github.com/KevinGong2013/ggbot/modules/media"
 	"github.com/KevinGong2013/ggbot/modules/storage"
-	"github.com/KevinGong2013/ggbot/modules/tuling"
 	"github.com/KevinGong2013/ggbot/modules/ui"
+	"github.com/KevinGong2013/ggbot/modules/xiaoice"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -59,7 +59,8 @@ func main() {
 	}
 
 	wxbot.RegisterModule(new(echo.Echo))
-	wxbot.RegisterModule(tuling.NewBrain(`b6b93435df0e4b71aff460231b89d8eb`))
+	// wxbot.RegisterModule(tuling.NewBrain(`b6b93435df0e4b71aff460231b89d8eb`))
+	wxbot.RegisterModule(xiaoice.NewBrain())
 
 	if *showCUI {
 		ui := ui.NewUI(*mediaPath)
