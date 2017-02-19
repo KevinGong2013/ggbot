@@ -162,8 +162,8 @@ func newClient() (*http.Client, error) {
 	return client, nil
 }
 
-// WeekUp is start point for wx bot.
-func WeekUp(up UUIDProcessor) (*WeChat, error) {
+// WakeUp is start point for wx bot.
+func WakeUp(up UUIDProcessor) (*WeChat, error) {
 
 	if up == nil {
 		up = new(defaultUUIDProcessor)
