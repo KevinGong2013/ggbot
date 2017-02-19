@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
-	log "github.com/Sirupsen/logrus"
 	wx "github.com/KevinGong2013/ggbot/wechat"
+	log "github.com/Sirupsen/logrus"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -65,7 +65,7 @@ func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 		case wx.ContactTypeOfficial:
 			m[`needTulingResponse`] = false
 		case wx.ContactTypeGroup:
-			m[`needTulingResponse`] = true
+			m[`needTulingResponse`] = m[`AtMe`]
 			m[`info`] = m[`Content`]
 			m[`to`] = m[`FromUserName`]
 			m[`userid`] = m[`ActualNickName`]

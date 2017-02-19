@@ -31,6 +31,15 @@ func (f *Flatten) MapMsgs(msg *CountedContent) {
 		logger.Debugf(`will map group chat msg `)
 
 		content, _ := m[`Content`].(string)
+
+		atme := `@`
+		if len(f.wx.MySelf.DisplayName) > 0 {
+			atme += f.wx.MySelf.DisplayName
+		} else {
+			atme += f.wx.MySelf.NickName
+		}
+		m[`AtMe`] = strings.Contains(content, atme)
+
 		infos := strings.Split(content, `:<br/>`)
 		if len(infos) != 2 {
 			continue
