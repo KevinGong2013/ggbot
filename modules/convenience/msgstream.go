@@ -3,19 +3,32 @@ package convenience
 import (
 	"sync"
 
+	"github.com/KevinGong2013/ggbot/wechat"
 	log "github.com/Sirupsen/logrus"
-	wx "github.com/KevinGong2013/ggbot/wechat"
 )
 
 var logger = log.WithFields(log.Fields{
 	"module": "convenience",
 })
 
+// Event ...
+type Event struct {
+	Path string
+	From string
+	Data interface{}
+	Time int64
+}
+
 // MsgStream ...
 type MsgStream struct {
 	sync.RWMutex
-	Handlers map[string]func(msg map[string]interface{})
-	wx       *wx.WeChat
+	wg          sync.WaitGroup
+	srcMap      map[string]chan Event
+	stream      chan Event
+	Handlers    map[string]func(e Event)
+	sigStopLoop chan Event
+	msgEvent    chan Event
+	wx          *wechat.WeChat
 }
 
 //DefaultMsgStream ...
@@ -23,23 +36,70 @@ var DefaultMsgStream = NewMsgStream()
 
 // NewMsgStream ...
 func NewMsgStream() *MsgStream {
-	return &MsgStream{
-		Handlers: make(map[string]func(msg map[string]interface{})),
+	ms := &MsgStream{
+		srcMap:      make(map[string]chan Event),
+		stream:      make(chan Event),
+		Handlers:    make(map[string]func(e Event)),
+		sigStopLoop: make(chan Event),
+		msgEvent:    make(chan Event),
+	}
+
+	ms.init()
+
+	return ms
+}
+
+func (ms *MsgStream) init() {
+	ms.Merge(`linsten`, ms.sigStopLoop)
+	ms.Merge(`msg`, ms.msgEvent)
+	go func() {
+		ms.wg.Wait()
+		close(ms.stream)
+	}()
+}
+
+// Listen ...
+func Listen() {
+	DefaultMsgStream.Listen()
+}
+
+// Unlisten ...
+func Unlisten() {
+	DefaultMsgStream.Unlisten()
+}
+
+// Listen to start handle event
+func (ms *MsgStream) Listen() {
+	for {
+		e := <-ms.stream
+		switch e.Path {
+		case `/sig/unlisten`:
+			return
+		}
+		go func(te Event) {
+			ms.RLock()
+			defer ms.RUnlock()
+
+			if pattern := ms.match(te.Path); pattern != `` {
+				ms.Handlers[pattern](te)
+			}
+		}(e)
 	}
 }
 
+// Unlisten stop handle event
+func (ms *MsgStream) Unlisten() {
+	go func() {
+		e := Event{
+			Path: `/sig/unlisten`,
+		}
+		ms.sigStopLoop <- e
+	}()
+}
+
 // Handle path use default ms
-func Handle(path string, handler func(msg map[string]interface{})) {
+func Handle(path string, handler func(e Event)) {
 	DefaultMsgStream.Handle(path, handler)
-}
-
-// WechatDidLogin ...
-func (ms *MsgStream) WechatDidLogin(wechat *wx.WeChat) {
-	ms.wx = wechat
-}
-
-// WechatDidLogout ...
-func (ms *MsgStream) WechatDidLogout(wechat *wx.WeChat) {
 }
 
 // Handle ...
@@ -47,7 +107,7 @@ func (ms *MsgStream) WechatDidLogout(wechat *wx.WeChat) {
 // /msg/solo/GGBot
 // /msg/group
 // /msg/group/GGBot测试群
-func (ms *MsgStream) Handle(path string, handler func(msg map[string]interface{})) {
+func (ms *MsgStream) Handle(path string, handler func(e Event)) {
 	ms.Handlers[cleanPath(path)] = handler
 }
 
@@ -58,38 +118,11 @@ func (ms *MsgStream) ResetHandlers() {
 	}
 }
 
-func (ms *MsgStream) deliverMsg(msg map[string]interface{}, isGroupMsg bool) {
-
-	var username string
-	var path string
-
-	if isGroupMsg {
-		username, _ = msg[`ActualUserName`].(string)
-		path = `/msg/group/`
-	} else {
-		username, _ = msg[`FromUserName`].(string)
-		path = `/msg/solo/`
-	}
-
-	contact, err := ms.wx.ContactByUserName(username)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	ms.RLock()
-	defer ms.RUnlock()
-
-	if pattern := ms.match(path + contact.NickName); pattern != `` {
-		ms.Handlers[pattern](msg)
-	}
-}
-
 func (ms *MsgStream) match(path string) string {
 	return findMatch(ms.Handlers, path)
 }
 
-func findMatch(mux map[string]func(msg map[string]interface{}), path string) string {
+func findMatch(mux map[string]func(e Event), path string) string {
 	n := -1
 	pattern := ""
 	for m := range mux {
@@ -123,17 +156,19 @@ func cleanPath(p string) string {
 	return p
 }
 
-// MapMsgs ...
-func (ms *MsgStream) MapMsgs(msg *wx.CountedContent) {}
+// Merge other event to msgstream
+func (ms *MsgStream) Merge(name string, ec chan Event) {
+	ms.Lock()
+	defer ms.Unlock()
 
-// HandleMsgs ...
-func (ms *MsgStream) HandleMsgs(msg *wx.CountedContent) {
-	for _, m := range msg.Content {
-		isSendByMySelf, _ := m[`IsSendByMySelf`].(bool)
-		if isSendByMySelf {
-			continue
+	ms.wg.Add(1)
+	ms.srcMap[name] = ec
+
+	go func(a chan Event) {
+		for n := range a {
+			n.From = name
+			ms.stream <- n
 		}
-		isGroupMsg, _ := m[`IsGroupMsg`].(bool)
-		ms.deliverMsg(m, isGroupMsg)
-	}
+		ms.wg.Done()
+	}(ec)
 }
