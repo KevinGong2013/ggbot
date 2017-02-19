@@ -10,11 +10,11 @@ import (
 
 	"github.com/KevinGong2013/ggbot/wechat"
 
-	"github.com/KevinGong2013/ggbot/modules/convenience"
 	"github.com/KevinGong2013/ggbot/modules/echo"
 	"github.com/KevinGong2013/ggbot/modules/media"
 	"github.com/KevinGong2013/ggbot/modules/storage"
 	"github.com/KevinGong2013/ggbot/modules/tuling"
+	"github.com/KevinGong2013/ggbot/modules/ui"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -24,7 +24,7 @@ var logger = log.WithFields(log.Fields{
 var showCUI = flag.Bool(`cui`, false, `是否要启用图形界面 默认不启用`)
 var mediaPath = flag.String(`mp`, `.ggbot/media`, `多媒体文件存放根目录`)
 var dbPath = flag.String(`dp`, `.ggbot/media`, `联系人和消息存放目录`)
-var debug = flag.Bool(`debug`, false, `是否以debug模式运行 默认false`)
+var debug = flag.Bool(`debug`, true, `是否以debug模式运行 默认false`)
 
 func main() {
 
@@ -60,20 +60,14 @@ func main() {
 
 	wxbot.RegisterModule(new(echo.Echo))
 	wxbot.RegisterModule(tuling.NewBrain(`b6b93435df0e4b71aff460231b89d8eb`))
-	wxbot.RegisterModule(convenience.DefaultMsgStream)
 
-	convenience.Handle(`/msg`, func(e convenience.Event) {
-		logger.Info(`msg hahah`)
-	})
-	convenience.Listen()
-	//
-	// if *showCUI {
-	// 	ui := ui.NewUI(*mediaPath)
-	// 	wxbot.RegisterModule(ui)
-	// 	ui.Loop()
-	// } else {
-	// 	waitForExit()
-	// }
+	if *showCUI {
+		ui := ui.NewUI(*mediaPath)
+		wxbot.RegisterModule(ui)
+		ui.Loop()
+	} else {
+		waitForExit()
+	}
 }
 
 func waitForExit() os.Signal {

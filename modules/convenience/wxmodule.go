@@ -6,6 +6,13 @@ import (
 	wx "github.com/KevinGong2013/ggbot/wechat"
 )
 
+// MsgEventData ...
+type MsgEventData struct {
+	FromUserName string
+	FromNickName string
+	Msg          map[string]interface{}
+}
+
 // WechatDidLogin ...
 func (ms *MsgStream) WechatDidLogin(wechat *wx.WeChat) {
 	ms.wx = wechat
@@ -49,10 +56,16 @@ func (ms *MsgStream) deliverMsg(msg map[string]interface{}, isGroupMsg bool) {
 		return
 	}
 
+	d := MsgEventData{
+		FromUserName: contact.UserName,
+		FromNickName: contact.NickName,
+		Msg:          msg,
+	}
+
 	e := Event{
 		Path: path + contact.NickName,
 		Time: time.Now().Unix(),
-		Data: msg,
+		Data: d,
 	}
 	ms.msgEvent <- e
 }

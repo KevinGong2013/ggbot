@@ -100,7 +100,7 @@ ui.Loop() // 注意ui.Loop() 会阻塞调用
     微信协议
      xxxxxx
      xxxx
-     
+
 好了， 到这里我默认你已经知道如何通过`wxweb api`和微信`server`交互
 
 `wechat`包，一共有一下几个功能点
@@ -204,13 +204,16 @@ wxbot.RegisterModule(convenience.DefaultMsgStream)
 ```
 #### step 4 处理消息
 ```go
-// 一共支持一下5种注册方式
+// 一共支持以下几种注册方式
 
 // /msg 所有的消息包括群聊和单聊
 // /msg/solo／GGBot 单聊的GGBot的消息
 // /msg/solo 剩下的所有单聊消息
 // /msg/group/GGBot测试群 来自GGBot测试群的消息
 // /msg/group 剩下的所有群聊消息
+
+// /timer/xh 每x小时执行一次
+// /timing/12:59 每天12点59 执行一次
 
 // 比如我想对我老婆发给我的每一条消息都回复一句 `小的知道了`
 convenience.Handle(`/msg/solo/老婆`, func(msg map[string]interface{}) {
@@ -231,6 +234,22 @@ convenience.Handle(`/msg/group/机器人`, func(msg map[string]interface{}) {
 		un, _ := wxbot.UserNameByNickName(`机器人`)
 		wxbot.SendTextMsg(`好巧呀, 我也是机器人`, un)
 	})
+
+// 比如每5分钟执行一次的定时任务
+convenience.AddTimer(5 * time.Minute)
+convenience.Handle(`/timer/5s`, func(e convenience.Event) {
+    data := e.Data.(convenience.TimerEventData)
+    logger.Debugf(`%s, %v`, data.Duration, data.Count)
+})
+
+// 比如每天早上10点准时签到
+convenience.AddTiming(`10:00`)
+convenience.Handle(`/timing/10:00`, func(e convenience.Event) {
+    un, _ := wxbot.UserNameByNickName(`xx公司签到处`)
+    wxbot.SendTextMsg(`签到签到`, un)
+})
+convenience.Listen()
+
 ```
 ### echo
 这个模块是将所有的服务器时间打印到日志系统，安装导入和上一个包一样，我们来看注册
