@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KevinGong2013/ggbot/utils"
 	log "github.com/Sirupsen/logrus"
 	"github.com/allegro/bigcache"
-	"github.com/KevinGong2013/ggbot/utils"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -220,6 +220,14 @@ func (wechat *WeChat) ExcuteRequest(req *http.Request, call Caller) error {
 
 	if !call.IsSuccess() {
 		return call.Error()
+	}
+
+	bs, err := json.Marshal(resp.Cookies())
+	if err != nil {
+		logger.Errorf(`cookie cache save failed %s`, err)
+	} else {
+		utils.CreateFile(cookieCachePath, bs, false)
+		logger.Debug(`cookie-cache did updated`)
 	}
 
 	return nil
