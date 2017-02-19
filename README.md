@@ -252,7 +252,7 @@ convenience.Listen()
 
 ```
 ### echo
-这个模块是将所有的服务器时间打印到日志系统，安装导入和上一个包一样，我们来看注册
+这个模块是将所有的服务器事件打印到日志系统，安装导入和上一个包一样，我们来看注册
 
 ```go
 wxbot.RegisterModule(new(echo.Echo)) // 很简单吧
