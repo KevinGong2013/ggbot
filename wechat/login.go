@@ -18,6 +18,8 @@ import (
 	"github.com/skratchdot/open-golang/open"
 )
 
+var cookieCachePath = `.ggbot/cookie-cache`
+
 // UUIDProcessor scan this uuid
 type UUIDProcessor interface {
 	ProcessUUID(uuid string) error
@@ -94,7 +96,7 @@ func (wechat *WeChat) beginLoginFlow() error {
 	redirectURL, err := wechat.quickLogin()
 
 	if err != nil {
-
+		utils.DeleteFile(cookieCachePath)
 		redirectURL = ``
 		logger.Warn(err)
 
@@ -146,7 +148,7 @@ func (wechat *WeChat) beginLoginFlow() error {
 
 func (wechat *WeChat) quickLogin() (string, error) {
 
-	file, err := os.Open(`.ggbot/cookie-cache`)
+	file, err := os.Open(cookieCachePath)
 	if err != nil {
 		return ``, err
 	}
@@ -171,6 +173,8 @@ func (wechat *WeChat) quickLogin() (string, error) {
 			req.AddCookie(cookie)
 		}
 	}
+
+	logger.Debug(`quick login flow`)
 
 	return url, wechat.login(req)
 }
@@ -286,7 +290,7 @@ func (wechat *WeChat) login(req *http.Request) error {
 	if err != nil {
 		logger.Warnf(`save cookie error: %v`, err)
 	} else {
-		utils.CreateFile(`.ggbot/cookie-cache`, b, false)
+		utils.CreateFile(cookieCachePath, b, false)
 		logger.Info(`did upate cookie cache`)
 	}
 
