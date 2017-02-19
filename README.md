@@ -319,7 +319,12 @@ ui := ui.NewUI(mediaPath)
 wxbot.RegisterModule(ui)
 ui.Loop() // 注意ui.Loop() 会阻塞调用
 ```
+### xiaoice
+微软小冰api 使用这个模块你需要先去给自己的微信领养一个小冰，具体怎么做请Google一下。安装导入和上一个包一样，我们来看注册
 
+``` go
+wxbot.RegisterModule(xiaoice.NewBrain()) // 好了就一句话
+```
 ## TODO
 
 - []完善现有模块
