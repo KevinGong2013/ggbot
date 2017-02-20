@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"time"
+
 	"github.com/KevinGong2013/ggbot/utils"
 	wx "github.com/KevinGong2013/ggbot/wechat"
 )
@@ -33,7 +35,6 @@ func (st *Storage) MapMsgs(msg *wx.CountedContent) {
 // HandleMsgs ...
 func (st *Storage) HandleMsgs(msg *wx.CountedContent) {
 	for _, m := range msg.Content {
-		mid, _ := m[`MsgId`].(string)
-		st.db.Write(`msg`, mid, m)
+		st.db.Write(`msg`, time.Now().String(), m)
 	}
 }
