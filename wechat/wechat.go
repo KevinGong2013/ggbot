@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KevinGong2013/ggbot/utils"
 	log "github.com/Sirupsen/logrus"
 	"github.com/allegro/bigcache"
-	"github.com/KevinGong2013/ggbot/utils"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -196,6 +196,7 @@ func (wechat *WeChat) ExcuteRequest(req *http.Request, call Caller) error {
 	}
 
 	resp, err := wechat.Client.Do(req)
+
 	if err != nil {
 		return err
 	}
@@ -221,6 +222,8 @@ func (wechat *WeChat) ExcuteRequest(req *http.Request, call Caller) error {
 	if !call.IsSuccess() {
 		return call.Error()
 	}
+
+	wechat.refreshCookieCache(resp.Cookies())
 
 	return nil
 }
@@ -251,10 +254,3 @@ func (wechat *WeChat) PassTicketKV() string {
 func (wechat *WeChat) SkeyKV() string {
 	return fmt.Sprintf(`skey=%s`, wechat.BaseRequest.Skey)
 }
-
-// just for debug
-type nopCloser struct {
-	io.Reader
-}
-
-func (np *nopCloser) Close() error { return nil }

@@ -19,6 +19,7 @@ import (
 )
 
 var cookieCachePath = `.ggbot/cookie-cache`
+var baseURLCachePath = `.ggbot/login-url-cache`
 
 // UUIDProcessor scan this uuid
 type UUIDProcessor interface {
@@ -148,6 +149,16 @@ func (wechat *WeChat) beginLoginFlow() error {
 
 func (wechat *WeChat) quickLogin() (string, error) {
 
+	ufile, err := os.Open(baseURLCachePath)
+	if err != nil {
+		return ``, err
+	}
+	ubs, err := ioutil.ReadAll(ufile)
+	if err != nil {
+		return ``, err
+	}
+	url := string(ubs)
+
 	file, err := os.Open(cookieCachePath)
 	if err != nil {
 		return ``, err
@@ -157,13 +168,11 @@ func (wechat *WeChat) quickLogin() (string, error) {
 		return ``, err
 	}
 
-	var info map[string]interface{}
-	err = json.Unmarshal(bs, &info)
+	var cookies []interface{}
+	err = json.Unmarshal(bs, &cookies)
 	if err != nil {
 		return ``, err
 	}
-	url := info[`url`].(string)
-	cookies := info[`cookies`].([]interface{})
 	req, _ := http.NewRequest(`GET`, url, nil)
 	for _, c := range cookies {
 		b, _ := json.Marshal(c)
@@ -281,20 +290,25 @@ func (wechat *WeChat) login(req *http.Request) error {
 	// added device id
 	wechat.BaseRequest.DeviceID = `e999471493880231`
 
-	info := map[string]interface{}{
-		`cookies`: resp.Cookies(),
-		`url`:     req.URL.String(),
-	}
-
-	b, err := json.Marshal(info)
-	if err != nil {
-		logger.Warnf(`save cookie error: %v`, err)
-	} else {
-		utils.CreateFile(cookieCachePath, b, false)
-		logger.Info(`did upate cookie cache`)
-	}
+	utils.CreateFile(baseURLCachePath, []byte(req.URL.String()), false)
+	wechat.refreshCookieCache(resp.Cookies())
 
 	return nil
+}
+
+func (wechat *WeChat) refreshCookieCache(cookies []*http.Cookie) {
+
+	if len(cookies) == 0 {
+		return
+	}
+
+	b, err := json.Marshal(cookies)
+	if err != nil {
+		logger.Warnf(`refresh cookie error: %v`, err)
+	} else {
+		utils.CreateFile(cookieCachePath, b, false)
+		logger.Info(`did refresh cookie cache`)
+	}
 }
 
 func (wechat *WeChat) init() error {
