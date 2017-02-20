@@ -216,21 +216,21 @@ wxbot.RegisterModule(convenience.DefaultMsgStream)
 // /timing/12:59 每天12点59 执行一次
 
 // 比如我想对我老婆发给我的每一条消息都回复一句 `小的知道了`
-convenience.Handle(`/msg/solo/老婆`, func(msg map[string]interface{}) {
+convenience.Handle(`/msg/solo/老婆`, func(e convenience.Event) {
 		un, _ := wxbot.UserNameByNickName(`老婆`)
 		wxbot.SendTextMsg(`小的知道了`, un)
 	})
 // 其他人的消息都打印到日志
-convenience.Handle(`/msg/solo`, func(msg map[string]interface{}) {
-		logger.Debugf(`%v`, msg)
+convenience.Handle(`/msg/solo`, func(e convenience.Event) {
+		logger.Debugf(`%v`, e.Data)
 	})
 // 如果是群聊中收到老婆的消息，就回一句 `老子收到了`
-convenience.Handle(`/msg/group/老婆`, func(msg map[string]interface{}) {
+convenience.Handle(`/msg/group/老婆`, func(e convenience.Event) {
 		un, _ := wxbot.UserNameByNickName(`老婆`)
 		wxbot.SendTextMsg(`老子收到了`, un)
 	})
 // 群聊中`机器人`的消息就会一句`好巧呀, 我也是机器人`
-convenience.Handle(`/msg/group/机器人`, func(msg map[string]interface{}) {
+convenience.Handle(`/msg/group/机器人`, func(e convenience.Event {
 		un, _ := wxbot.UserNameByNickName(`机器人`)
 		wxbot.SendTextMsg(`好巧呀, 我也是机器人`, un)
 	})
