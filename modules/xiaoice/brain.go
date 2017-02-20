@@ -50,6 +50,7 @@ func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 		contact, err := b.wx.ContactByUserName(from)
 		if err != nil {
 			m[`needXiaoiceResponse`] = false
+			logger.Error(err)
 			continue
 		}
 
@@ -68,7 +69,11 @@ func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 					m[`ReplayUserName`] = b.waittingReplay[len-1]
 					m[`localFileId`] = m[`MsgId`]
 					b.waittingReplay = b.waittingReplay[:len-1]
+				} else {
+					logger.Warnf(`xiaoice replay %s`, m)
 				}
+			} else {
+				logger.Warn(`offical msg %s`, contact.NickName)
 			}
 			m[`needXiaoiceResponse`] = false
 		case wx.ContactTypeGroup:
@@ -77,7 +82,6 @@ func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 			m[`xiaoice_to`] = m[`FromUserName`]
 		}
 	}
-	return
 }
 
 // HandleMsgs ...
