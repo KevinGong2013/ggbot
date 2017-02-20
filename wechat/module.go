@@ -76,19 +76,19 @@ func (wechat *WeChat) handleServerEvent() {
 		for {
 			select {
 			case msg := <-addMsg:
-				go handleMsgs(msg)
+				go wechat.handleMsgs(msg)
 			case modyfyContact := <-modContact:
-				go handleContacts(modyfyContact, 0)
+				go wechat.handleContacts(modyfyContact, 0)
 			case delContact := <-delContact:
-				go handleContacts(delContact, 1)
+				go wechat.handleContacts(delContact, 1)
 			case modChatRoomMember := <-modChatRoomMember:
-				go handleContacts(modChatRoomMember, 2)
+				go wechat.handleContacts(modChatRoomMember, 2)
 			}
 		}
 	}()
 }
 
-func handleMsgs(msg *CountedContent) {
+func (wechat *WeChat) handleMsgs(msg *CountedContent) {
 	for _, m := range registedMsgModules {
 		m.MapMsgs(msg)
 	}
@@ -98,7 +98,9 @@ func handleMsgs(msg *CountedContent) {
 	}
 }
 
-func handleContacts(cts *CountedContent, changeType int) {
+func (wechat *WeChat) handleContacts(cts *CountedContent, changeType int) {
+
+	wechat.contactDidChange(cts, changeType)
 
 	for _, v := range cts.Content {
 		v[`ChangeType`] = changeType

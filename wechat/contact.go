@@ -269,6 +269,28 @@ func (wechat *WeChat) ContactByNickName(nn string) (*Contact, error) {
 	return wechat.ContactByUserName(un)
 }
 
+// TODO
+func (wechat *WeChat) modifyRemarName(un string) (string, error) {
+
+	data, _ := json.Marshal(map[string]interface{}{
+		`BaseRequest`: wechat.BaseRequest,
+		`UserName`:    un,
+		`CmdId`:       2,
+		`NickName`:    `Test`,
+	})
+
+	url := fmt.Sprintf(`%s/webwxoplog?lang=zh_CN&%v`, wechat.BaseURL, wechat.PassTicketKV())
+	resp := new(Response)
+
+	wechat.Excute(url, bytes.NewReader(data), resp)
+
+	if !resp.IsSuccess() {
+		logger.Error(resp.Error())
+	}
+
+	return `Test`, nil
+}
+
 func (wechat *WeChat) saveContactToCache(contact map[string]interface{}) {
 	un, _ := contact[`UserName`].(string)
 	bs, e := json.Marshal(contact)
@@ -285,4 +307,23 @@ func (wechat *WeChat) resetCache() {
 
 	wechat.contactCache.Reset()
 	wechat.nicknameCache.Reset()
+}
+
+func (wechat *WeChat) contactDidChange(cts *CountedContent, changeType int) {
+	if changeType == 0 { // 修改
+		for _, v := range cts.Content {
+			vf, _ := v[`VerifyFlag`].(float64)
+			un, _ := v[`UserName`].(string)
+
+			if vf/8 != 0 {
+				v[`Type`] = ContactTypeOfficial
+			} else if strings.HasPrefix(un, `@@`) {
+				v[`Type`] = ContactTypeGroup
+			} else {
+				v[`Type`] = ContactTypeFriend
+			}
+
+			wechat.saveContactToCache(v)
+		}
+	}
 }
