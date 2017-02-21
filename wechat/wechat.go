@@ -145,9 +145,9 @@ func newClient() (*http.Client, error) {
 
 	transport := http.Transport{
 		Dial: (&net.Dialer{
-			Timeout: 30 * time.Second,
+			Timeout: 1 * time.Minute,
 		}).Dial,
-		TLSHandshakeTimeout: 30 * time.Second,
+		TLSHandshakeTimeout: 1 * time.Minute,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
