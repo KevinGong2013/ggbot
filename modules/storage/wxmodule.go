@@ -18,13 +18,14 @@ func (st *Storage) WechatDidLogout(wechat *wx.WeChat) {
 }
 
 // MapContact ...
-func (st *Storage) MapContact(contact *wx.Contact) {
+func (st *Storage) MapContact(contact map[string]interface{}) {
 	return
 }
 
 // HandleContact ...
-func (st *Storage) HandleContact(contact *wx.Contact) {
-	st.db.Write(`contact`, contact.NickName, contact)
+func (st *Storage) HandleContact(contact map[string]interface{}) {
+	nn := contact[`NickName`].(string)
+	st.db.Write(`contact`, nn, contact)
 }
 
 // MapMsgs ...

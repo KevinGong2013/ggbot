@@ -1,8 +1,8 @@
 package echo
 
 import (
-	log "github.com/Sirupsen/logrus"
 	wx "github.com/KevinGong2013/ggbot/wechat"
+	log "github.com/Sirupsen/logrus"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -11,6 +11,11 @@ var logger = log.WithFields(log.Fields{
 
 // Echo module
 type Echo struct {
+}
+
+// New ..
+func New() *Echo {
+	return new(Echo)
 }
 
 //WechatDidLogin ...

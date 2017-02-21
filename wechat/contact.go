@@ -8,7 +8,13 @@ import (
 	"time"
 
 	"github.com/KevinGong2013/ggbot/utils"
+	"github.com/allegro/bigcache"
 )
+
+// ContactIterator iterator all contacts
+type ContactIterator struct {
+	it *bigcache.EntryInfoIterator
+}
 
 // Contact is wx Account struct
 type Contact struct {
@@ -269,8 +275,13 @@ func (wechat *WeChat) ContactByNickName(nn string) (*Contact, error) {
 	return wechat.ContactByUserName(un)
 }
 
+// ContactIterator use this iterator all contacts // TODO
+func (wechat *WeChat) ContactIterator() *ContactIterator {
+	return &ContactIterator{wechat.contactCache.Iterator()}
+}
+
 // TODO
-func (wechat *WeChat) modifyRemarName(un string) (string, error) {
+func (wechat *WeChat) modifyRemarkName(un string) (string, error) {
 
 	data, _ := json.Marshal(map[string]interface{}{
 		`BaseRequest`: wechat.BaseRequest,
