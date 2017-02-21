@@ -3,7 +3,6 @@ package wechat
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -48,10 +47,6 @@ type CountedContent struct {
 
 // listen did hold a long connection, retrun data by 4 chans.
 func (wechat *WeChat) listen(addMsg, modContact, delContact, modChatRoomMember chan *CountedContent) error {
-
-	if wechat.BaseRequest.Ret != 0 {
-		return errors.New(`Please login`)
-	}
 
 	logger.Info(`looking up sync server, after discover sync server you can begin receiving message.`)
 
@@ -134,13 +129,13 @@ func (wechat *WeChat) syncCheck() (string, string, error) {
 	resp, err := wechat.Client.Get(url.String())
 
 	if err != nil {
-		return ``, ``, nil
+		return ``, ``, err
 	}
 	defer resp.Body.Close()
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return ``, ``, nil
+		return ``, ``, err
 	}
 
 	ds := string(data)
