@@ -149,41 +149,21 @@ func (wechat *WeChat) beginLoginFlow() error {
 
 func (wechat *WeChat) quickLogin() (string, error) {
 
-	ufile, err := os.Open(baseURLCachePath)
-	if err != nil {
-		return ``, err
-	}
-	ubs, err := ioutil.ReadAll(ufile)
-	if err != nil {
-		return ``, err
-	}
-	url := string(ubs)
-
-	file, err := os.Open(cookieCachePath)
-	if err != nil {
-		return ``, err
-	}
-	bs, err := ioutil.ReadAll(file)
+	url, err := wechat.cachedLoginURL()
 	if err != nil {
 		return ``, err
 	}
 
-	var cookies []interface{}
-	err = json.Unmarshal(bs, &cookies)
-	if err != nil {
+	cookies, err := wechat.cachedCookies()
+	if cookies == nil {
 		return ``, err
-	}
-	req, _ := http.NewRequest(`GET`, url, nil)
-	for _, c := range cookies {
-		b, _ := json.Marshal(c)
-		var cookie *http.Cookie
-		e := json.Unmarshal(b, cookie)
-		if e == nil {
-			req.AddCookie(cookie)
-		}
 	}
 
 	logger.Debug(`quick login flow`)
+	req, _ := http.NewRequest(`GET`, url, nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
 
 	return url, wechat.login(req)
 }
@@ -290,25 +270,10 @@ func (wechat *WeChat) login(req *http.Request) error {
 	// added device id
 	wechat.BaseRequest.DeviceID = `e999471493880231`
 
-	utils.CreateFile(baseURLCachePath, []byte(req.URL.String()), false)
+	wechat.refreshLoginURLCache(req.URL.String())
 	wechat.refreshCookieCache(resp.Cookies())
 
 	return nil
-}
-
-func (wechat *WeChat) refreshCookieCache(cookies []*http.Cookie) {
-
-	if len(cookies) == 0 {
-		return
-	}
-
-	b, err := json.Marshal(cookies)
-	if err != nil {
-		logger.Warnf(`refresh cookie error: %v`, err)
-	} else {
-		utils.CreateFile(cookieCachePath, b, false)
-		logger.Info(`did refresh cookie cache`)
-	}
 }
 
 func (wechat *WeChat) init() error {
@@ -369,4 +334,69 @@ func (wechat *WeChat) keepAlive() {
 		loginState <- -1
 		return
 	}()
+}
+
+func (wechat *WeChat) cachedCookies() ([]*http.Cookie, error) {
+
+	file, err := os.Open(cookieCachePath)
+	if err != nil {
+		return nil, err
+	}
+	bs, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var cookieInterfaces []interface{}
+	err = json.Unmarshal(bs, &cookieInterfaces)
+	if err != nil {
+		return nil, err
+	}
+
+	var cookies []*http.Cookie
+
+	for _, c := range cookieInterfaces {
+		b, _ := json.Marshal(c)
+		var cookie *http.Cookie
+		e := json.Unmarshal(b, cookie)
+		if e == nil {
+			cookies = append(cookies, cookie)
+		}
+	}
+
+	return cookies, nil
+}
+
+func (wechat *WeChat) refreshCookieCache(cookies []*http.Cookie) {
+
+	if len(cookies) == 0 {
+		return
+	}
+
+	b, err := json.Marshal(cookies)
+	if err != nil {
+		logger.Warnf(`refresh cookie error: %v`, err)
+	} else {
+		utils.CreateFile(cookieCachePath, b, false)
+		logger.Info(`did refresh cookie cache`)
+	}
+}
+
+func (wechat *WeChat) cachedLoginURL() (string, error) {
+
+	ufile, err := os.Open(baseURLCachePath)
+	if err != nil {
+		return ``, err
+	}
+
+	ubs, err := ioutil.ReadAll(ufile)
+	if err != nil {
+		return ``, err
+	}
+
+	return string(ubs), err
+}
+
+func (wechat *WeChat) refreshLoginURLCache(url string) {
+	utils.CreateFile(baseURLCachePath, []byte(url), false)
 }
