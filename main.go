@@ -40,7 +40,7 @@ var date = `2017-02-22`
 
 func main() {
 
-	logger.Info(`version: %s, date: %s`, version, date)
+	logger.Infof(`version: %s, date: %s`, version, date)
 
 	tf := log.TextFormatter{}
 	tf.FullTimestamp = true
@@ -119,9 +119,9 @@ func createDefaultConf() (*Conf, error) {
 				`path`: `.ggbot/media`,
 			},
 			`service`: {
-				`msg-webhook`:         `http://127.0.0.1/msg`,
-				`contact-webhook`:     `http://127.0.0.1/contact`,
-				`login-state-webhook`: `http://127.0.0.1/login_state`,
+				`msg-webhook`:         `http://127.0.0.1:3288/msg`,
+				`contact-webhook`:     `http://127.0.0.1:3288/contact`,
+				`login-state-webhook`: `http://127.0.0.1:3288/login_state`,
 			},
 			`storage`: {
 				`path`: `.ggbot/db`,
