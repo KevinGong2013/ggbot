@@ -96,9 +96,14 @@ func (wechat *WeChat) beginLoginFlow() error {
 
 	redirectURL, err := wechat.quickLogin()
 
-	logger.Debugf(`redirectURL: [%s], err: [%s]`, redirectURL, err)
+	if err == nil {
+		logger.Debugf(`redirectURL: [%s]`, redirectURL)
+	}
 
 	if err != nil {
+
+		logger.Info(err)
+
 		utils.DeleteFile(cookieCachePath)
 		// 1.
 		uuid, err := wechat.fetchUUID()

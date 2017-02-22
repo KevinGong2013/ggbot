@@ -1,65 +1,184 @@
 package main
 
 import (
-	"flag"
+	"errors"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
 
+	yaml "gopkg.in/yaml.v2"
+
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/KevinGong2013/ggbot/wechat"
-
 	"github.com/KevinGong2013/ggbot/modules/echo"
+	"github.com/KevinGong2013/ggbot/modules/gguuid"
+	"github.com/KevinGong2013/ggbot/modules/media"
 	"github.com/KevinGong2013/ggbot/modules/service"
+	"github.com/KevinGong2013/ggbot/modules/tuling"
+	"github.com/KevinGong2013/ggbot/modules/ui"
+	"github.com/KevinGong2013/ggbot/modules/xiaoice"
+	"github.com/KevinGong2013/ggbot/utils"
+	"github.com/KevinGong2013/ggbot/wechat"
 )
 
 var logger = log.WithFields(log.Fields{
 	"module": "main",
 })
 
-var showCUI = flag.Bool(`cui`, false, `是否要启用图形界面 默认不启用`)
-var mediaPath = flag.String(`mp`, `.ggbot/media`, `多媒体文件存放根目录`)
-var dbPath = flag.String(`dp`, `.ggbot/db`, `联系人和消息存放目录`)
+// Conf ...
+type Conf struct {
+	LogLevel int `yaml:"log-level"`
+	Debug    bool
+	Modules  map[string]map[string]interface{}
+}
+
+var confPath = `conf.yaml`
 
 func main() {
 
-	flag.Parse()
+	tf := log.TextFormatter{}
+	tf.FullTimestamp = true
+	tf.TimestampFormat = `2006-01-02 15:04:05`
+	log.SetFormatter(&tf)
 
-	log.SetLevel(log.DebugLevel)
+	var conf = &Conf{}
 
-	wxbot, err := wechat.WakeUp(nil)
+	err := readConf(conf)
+
+	if err != nil {
+		logger.Error(err)
+		logger.Info(`读取配置文件出错，GGBot 将自动生成默认的配置文件`)
+
+		conf, err = createDefaultConf()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	wechat.Debug = conf.Debug
+	switch conf.LogLevel {
+	case 0:
+		log.SetLevel(log.DebugLevel)
+	case 1:
+		log.SetLevel(log.InfoLevel)
+	case 2:
+		log.SetLevel(log.WarnLevel)
+	case 3:
+		log.SetLevel(log.ErrorLevel)
+	}
+
+	var up wechat.UUIDProcessor
+	if conf.Modules[`gguuid`] != nil {
+		up = gguuid.New()
+	}
+
+	wxbot, err := wechat.WakeUp(up)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
-	// d, err := media.NewDownloader(*mediaPath)
-	// if err == nil {
-	// 	wxbot.RegisterModule(d)
-	// } else {
-	// 	logger.Error(err)
-	// }
+	err = registerModules(conf, wxbot)
+	if err != nil {
+		panic(err)
+	}
 
-	// st, err := storage.NewStorage(*dbPath)
-	// if err == nil {
-	// 	wxbot.RegisterModule(st)
-	// } else {
-	// 	logger.Error(err)
-	// }
-
-	// wxbot.RegisterModule(tuling.NewBrain(`b6b93435df0e4b71aff460231b89d8eb`))
-	// wxbot.RegisterModule(xiaoice.NewBrain())
-	wxbot.RegisterModule(echo.New())
-	wxbot.RegisterModule(service.NewWrapper(
-		`http://127.0.0.1:3288/msg`,
-		`http://127.0.0.1:3288/contact`,
-		`http://127.0.0.1:3288/login_state`))
-
-	// 	ui := ui.NewUI(*mediaPath)
-	// 	wxbot.RegisterModule(ui)
-	// 	ui.Loop()
 	waitForExit()
+}
+
+func readConf(conf *Conf) error {
+
+	file, err := os.Open(confPath)
+	if err != nil {
+		return err
+	}
+
+	buf, err := ioutil.ReadAll(file)
+	if err != nil {
+		return err
+	}
+
+	return yaml.Unmarshal(buf, &conf)
+}
+
+func createDefaultConf() (*Conf, error) {
+
+	conf := &Conf{
+		LogLevel: 0,
+		Debug:    true,
+		Modules: map[string]map[string]interface{}{
+			`echo`:   {},
+			`gguuid`: {},
+			`media`: {
+				`path`: `.ggbot/media`,
+			},
+			`service`: {
+				`msg-webhook`:         `http://127.0.0.1/msg`,
+				`contact-webhook`:     `http://127.0.0.1/contact`,
+				`login-state-webhook`: `http://127.0.0.1/login_state`,
+			},
+			`storage`: {
+				`path`: `.ggbot/db`,
+			},
+			`tuling`: {
+				`api-key`: `b6b93435df0e4b71aff460231b89d8eb`,
+			},
+			// `ui`:      {},
+			`xiaoice`: {},
+		},
+	}
+
+	buff, err := yaml.Marshal(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	return conf, utils.CreateFile(confPath, buff, false)
+}
+
+func registerModules(conf *Conf, bot *wechat.WeChat) error {
+
+	// 1. 不能同时注册gguuid和ui
+	if conf.Modules[`ui`] != nil && conf.Modules[`gguuid`] != nil {
+		return errors.New(`[ui]模块和[gguid]模块不能共存，请二选一]`)
+	}
+
+	for k, v := range conf.Modules {
+		switch k {
+		case `echo`:
+			bot.RegisterModule(echo.New())
+		case `media`:
+			path := v[`path`].(string)
+			d, err := media.NewDownloader(path)
+			if err == nil {
+				bot.RegisterModule(d)
+			} else {
+				logger.Warnf(`regist media module failed err: %v`, err)
+			}
+		case `service`:
+			msgWebhook := v[`msg-webhook`].(string)
+			contactWebhook := v[`contact-webhook`].(string)
+			loginWebhook := v[`login-state-webhook`].(string)
+			bot.RegisterModule(service.NewWrapper(msgWebhook, contactWebhook, loginWebhook))
+		case `tuling`:
+			apiKey := v[`api-key`].(string)
+			if len(apiKey) == 0 {
+				logger.Warn(`regsit tuling module failed api-key is needed`)
+			} else {
+				bot.RegisterModule(tuling.NewBrain(apiKey))
+			}
+		case `ui`:
+			path := v[`path`].(string)
+			u := ui.NewUI(path)
+			bot.RegisterModule(u)
+			go u.Loop()
+		case `xiaoice`:
+			bot.RegisterModule(xiaoice.NewBrain())
+		}
+	}
+
+	return nil
 }
 
 func waitForExit() os.Signal {

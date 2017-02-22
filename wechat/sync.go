@@ -59,7 +59,7 @@ func (wechat *WeChat) listen(addMsg, modContact, delContact, modChatRoomMember c
 	logger.Infof(`discovered sync host [%s], begin sync ... ...`, wechat.syncHost)
 
 	for {
-		logger.Debug(`sync ....`)
+		logger.Info(`sync ....`)
 
 		code, selector, err := wechat.syncCheck()
 
@@ -146,6 +146,11 @@ func (wechat *WeChat) syncCheck() (string, string, error) {
 	code, _ := utils.Search(ds, `window.synccheck={retcode:"`, `"`)
 
 	selector, err := utils.Search(ds, `window.synccheck={retcode:"0",selector:"`, `"}`)
+
+	//
+	if len(resp.Cookies()) > 0 {
+		wechat.refreshCookieCache(resp.Cookies())
+	}
 
 	return code, selector, err
 }

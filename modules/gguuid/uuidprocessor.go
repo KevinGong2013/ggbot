@@ -19,6 +19,11 @@ var logger = log.WithFields(log.Fields{
 // UUIDProcessor ...
 type UUIDProcessor struct{}
 
+// New a uuid processor
+func New() *UUIDProcessor {
+	return &UUIDProcessor{}
+}
+
 // ProcessUUID impolements UUIDProcessor interface
 func (up *UUIDProcessor) ProcessUUID(uuid string) error {
 
