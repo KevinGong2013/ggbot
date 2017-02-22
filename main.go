@@ -35,7 +35,12 @@ type Conf struct {
 
 var confPath = `conf.yaml`
 
+var version = `0.9.1`
+var date = `2017-02-22`
+
 func main() {
+
+	logger.Info(`version: %s, date: %s`, version, date)
 
 	tf := log.TextFormatter{}
 	tf.FullTimestamp = true
