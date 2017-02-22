@@ -8,15 +8,15 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/KevinGong2013/ggbot/modules/bridge/arg"
 	r "github.com/KevinGong2013/ggbot/modules/bridge/result"
+	log "github.com/Sirupsen/logrus"
 )
 
 // Connector is design to connect iOS wechat app
 type Connector interface {
-	Send(*arg.Arg) error
-	RefreshToken(t string)
+	RefreshToken(token string)
+	Send(a *arg.Arg) error
 }
 
 var logger = log.WithFields(log.Fields{
@@ -42,6 +42,8 @@ func NewWrapper(c Connector) *Wrapper {
 
 	//
 	http.HandleFunc("/bridge", w.handle)
+
+	go http.ListenAndServe(`:3280`, nil)
 
 	return w
 }

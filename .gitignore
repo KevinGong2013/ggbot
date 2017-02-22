@@ -24,3 +24,4 @@ _testmain.go
 *.prof
 conf.yaml
 ggbot-mac
+_examples/icey
