@@ -48,7 +48,7 @@ func (d *Downloader) MapMsgs(msg *wx.CountedContent) {
 // HandleMsgs ...
 func (d *Downloader) HandleMsgs(msg *wx.CountedContent) {
 	for _, m := range msg.Content {
-		if m[`isMediaMsg`].(bool) {
+		if ok, isM := m[`isMediaMsg`].(bool); ok && isM {
 			url, _ := m[`MediaMsgDownloadUrl`].(string)
 			name, _ := m[`MsgId`].(string)
 			go func() {

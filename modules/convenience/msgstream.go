@@ -45,7 +45,6 @@ func NewMsgStream() *MsgStream {
 	}
 
 	ms.init()
-
 	return ms
 }
 
