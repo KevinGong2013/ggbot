@@ -194,7 +194,7 @@ func (wechat *WeChat) ExcuteRequest(req *http.Request, call Caller) error {
 
 	if Debug {
 		reqData, _ := httputil.DumpRequest(req, true)
-		utils.CreateFile(filename+`_req.kv`, reqData, false)
+		utils.CreateFile(filename+`_req.json`, reqData, false)
 	}
 
 	resp, err := wechat.Client.Do(req)

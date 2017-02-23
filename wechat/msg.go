@@ -2,9 +2,9 @@ package wechat
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"mime/multipart"
@@ -18,7 +18,9 @@ import (
 
 	"github.com/KevinGong2013/ggbot/utils"
 	"github.com/KevinGong2013/ggbot/wechat/messages"
+
 	"gopkg.in/h2non/filetype.v1"
+	"gopkg.in/h2non/filetype.v1/types"
 )
 
 type uploadMediaResponse struct {
@@ -39,7 +41,7 @@ type Msg interface {
 	Content() map[string]interface{}
 }
 
-var mediaIndex = int64(1)
+var mediaIndex = int64(0)
 
 // SendMsg is desined to send Message to group or contact
 func (wechat *WeChat) SendMsg(message Msg) error {
@@ -108,29 +110,18 @@ func (wechat *WeChat) SendFile(path, to string) error {
 }
 
 // UploadMedia is a convernice method to upload attachment to wx cdn.
-func (wechat *WeChat) UploadMedia(path string) (string, error) {
+func (wechat *WeChat) UploadMedia(buf []byte, kind types.Type, info os.FileInfo, to string) (string, error) {
 
-	info, err := os.Stat(path)
+	// Only the first 261 bytes are used to sniff the content type.
+	head := buf[:261]
 
-	if err != nil {
-		return ``, err
-	}
-
-	file, err := os.Open(path)
-	if err != nil {
-		return ``, err
-	}
-	defer file.Close()
-
-	kind, err := filetype.MatchFile(path)
-
-	if err != nil {
-		return ``, err
-	}
-
-	mediatype := `doc`
-	if strings.HasPrefix(kind.MIME.Value, `image/`) {
+	var mediatype string
+	if filetype.IsImage(head) {
 		mediatype = `pic`
+	} else if filetype.IsVideo(head) {
+		mediatype = `video`
+	} else {
+		mediatype = `doc`
 	}
 
 	fields := map[string]string{
@@ -151,6 +142,10 @@ func (wechat *WeChat) UploadMedia(path string) (string, error) {
 		`StartPos`:      0,
 		`DataLen`:       utils.Str(info.Size()),
 		`MediaType`:     4,
+		`UploadType`:    2,
+		`ToUserName`:    to,
+		`FromUserName`:  wechat.MySelf.UserName,
+		`FileMd5`:       string(md5.New().Sum(buf)),
 	})
 
 	if err != nil {
@@ -164,20 +159,13 @@ func (wechat *WeChat) UploadMedia(path string) (string, error) {
 	if err != nil {
 		return ``, err
 	}
-
-	_, err = io.Copy(fw, file)
-	if err != nil {
-		return ``, err
-	}
+	fw.Write(buf)
 
 	for k, v := range fields {
 		writer.WriteField(k, v)
 	}
 
 	writer.WriteField(`uploadmediarequest`, string(media))
-
-	// Don't forget to close the multipart writer.
-	// If you don't close it, your request will be missing the terminating boundary.
 	writer.Close()
 
 	urlOBJ, err := url.Parse(wechat.BaseURL)
@@ -210,6 +198,7 @@ func (wechat *WeChat) UploadMedia(path string) (string, error) {
 			return ``, err
 		}
 
+		mediaIndex++
 		return resp.MediaID, nil
 	}
 
@@ -254,30 +243,38 @@ func (wechat *WeChat) DownloadMedia(url string, localPath string) (string, error
 // NewMsg create new message instance
 func (wechat *WeChat) newMsg(filepath, to string) (Msg, error) {
 
-	media, err := wechat.UploadMedia(filepath)
-
+	info, err := os.Stat(filepath)
 	if err != nil {
 		return nil, err
 	}
 
-	kind, err := filetype.MatchFile(filepath)
+	buf, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}
+	kind, _ := filetype.Get(buf)
 
-	isImage := strings.HasPrefix(kind.MIME.Value, `image`)
+	media, err := wechat.UploadMedia(buf, kind, info, to)
+
+	if err != nil {
+		return nil, err
+	}
 
 	var msg Msg
 
-	if isImage {
+	if filetype.IsImage(buf) {
 		if strings.HasSuffix(kind.MIME.Value, `gif`) {
 			msg = messages.NewEmoticonMsgMsg(media, to)
 		} else {
-			msg = messages.NewFileMsg(`webwxsendmsgimg?fun=async&f=json`, media, to, 3, nil)
+			msg = messages.NewImageMsg(media, to)
 		}
 	} else {
 		info, _ := os.Stat(filepath)
-		msg = messages.NewFileMsg(`webwxsendappmsg?fun=async&f=json`, media, to, 6, info)
+		if filetype.IsVideo(buf) {
+			msg = messages.NewVideoMsg(media, to)
+		} else {
+			msg = messages.NewFileMsg(media, to, info.Name(), kind.Extension)
+		}
 	}
 
 	return msg, err
@@ -289,12 +286,10 @@ func clientMsgID() string {
 
 func baseMsg(to string) map[string]interface{} {
 
-	randomID := clientMsgID()
-
 	msg := map[string]interface{}{
 		`ToUserName`:  to,
-		`LocalID`:     randomID,
-		`ClientMsgId`: randomID,
+		`LocalID`:     clientMsgID(),
+		`ClientMsgId`: clientMsgID(),
 	}
 
 	return msg

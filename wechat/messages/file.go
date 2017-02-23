@@ -1,17 +1,15 @@
 package messages
 
-import (
-	"fmt"
-	"os"
-)
+import "fmt"
 
 // FileMsg struct
 type FileMsg struct {
-	to       string
-	mediaID  string
-	path     string
-	filetype int
-	info     os.FileInfo
+	to      string
+	mediaID string
+	path    string
+	ftype   int
+	fname   string
+	ext     string
 }
 
 // Path is text msg's api path
@@ -28,10 +26,10 @@ func (msg *FileMsg) To() string {
 func (msg *FileMsg) Content() map[string]interface{} {
 	content := make(map[string]interface{}, 0)
 
-	content[`Type`] = msg.filetype
+	content[`Type`] = msg.ftype
 
-	if msg.filetype == 6 {
-		content[`Content`] = fmt.Sprintf(`<appmsg appid='wxeb7ec651dd0aefa9' sdkver=''><title>%s</title><des></des><action></action><type>6</type><content></content><url></url><lowurl></lowurl><appattach><totallen>10</totallen><attachid>%s</attachid><fileext>txt</fileext></appattach><extinfo></extinfo></appmsg>`, msg.info.Name(), msg.mediaID)
+	if msg.ftype == 6 {
+		content[`Content`] = fmt.Sprintf(`<appmsg appid='wxeb7ec651dd0aefa9' sdkver=''><title>%s</title><des></des><action></action><type>6</type><content></content><url></url><lowurl></lowurl><appattach><totallen>10</totallen><attachid>%s</attachid><fileext>%s</fileext></appattach><extinfo></extinfo></appmsg>`, msg.fname, msg.mediaID, msg.ext)
 	} else {
 		content[`MediaId`] = msg.mediaID
 	}
@@ -40,14 +38,24 @@ func (msg *FileMsg) Content() map[string]interface{} {
 }
 
 // NewFileMsg construct a new FileMsg's instance
-func NewFileMsg(path, mediaID, to string, filetype int, info os.FileInfo) *FileMsg {
-	return &FileMsg{to, mediaID, path, filetype, info}
+func NewFileMsg(mediaID, to, name, ext string) *FileMsg {
+	return &FileMsg{to, mediaID, `webwxsendappmsg?fun=async&f=json`, 6, name, ext}
+}
+
+// NewImageMsg ..
+func NewImageMsg(mediaID, to string) *FileMsg {
+	return &FileMsg{to, mediaID, `webwxsendmsgimg?fun=async&f=json`, 3, ``, ``}
+}
+
+// NewVideoMsg ..
+func NewVideoMsg(mediaID, to string) *FileMsg {
+	return &FileMsg{to, mediaID, `webwxsendvideomsg?fun=async&f=json`, 43, ``, ``}
 }
 
 func (msg *FileMsg) String() string {
-	if msg.filetype == 3 {
+	if msg.ftype == 3 {
 		return `IMAGE`
-	} else if msg.filetype == 4 {
+	} else if msg.ftype == 4 {
 		return `GIF EMOTICON`
 	} else {
 		return `FILE`
