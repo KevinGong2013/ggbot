@@ -1,7 +1,11 @@
 package xiaoice
 
-import wx "github.com/KevinGong2013/ggbot/wechat"
-import "sync"
+import (
+	"sync"
+
+	"github.com/KevinGong2013/ggbot/utils"
+	wx "github.com/KevinGong2013/ggbot/wechat"
+)
 
 import log "github.com/Sirupsen/logrus"
 
@@ -36,11 +40,7 @@ func (b *Brain) WechatDidLogout(wechat *wx.WeChat) {
 func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 	for _, m := range msg.Content {
 
-		msgType, _ := m[`MsgType`].(float64)
-		if msgType != 1 && msgType != 3 && msgType != 47 { // 目前只回复文字/图片/表情/消息
-			m[`needXiaoiceResponse`] = false
-			continue
-		}
+		// msgType, _ := m[`MsgType`].(float64)
 
 		isSendByMySelf, _ := m[`IsSendByMySelf`].(bool)
 		if isSendByMySelf {
@@ -94,7 +94,21 @@ func (b *Brain) HandleMsgs(msg *wx.CountedContent) {
 			to, _ := m[`xiaoice_to`].(string)
 
 			if b.xiaoice != nil {
-				err := b.wx.SendTextMsg(c, b.xiaoice.To())
+				var err error
+				logger.Debug(`args ...interface{}1`)
+				if m[`isMediaMsg`].(bool) {
+					logger.Debug(`args ...interface{}2`)
+					path, e := b.wx.DownloadMedia(m[`MediaMsgDownloadUrl`].(string), m[`MsgId`].(string))
+					defer utils.DeleteFile(path)
+					logger.Debugf(`args ...interface{}%s`, path)
+					if e == nil {
+						err = b.wx.SendFile(path, b.xiaoice.To())
+					} else {
+						err = e
+					}
+				} else {
+					err = b.wx.SendTextMsg(c, b.xiaoice.To())
+				}
 				if err == nil {
 					b.Lock()
 					defer b.Unlock()
@@ -111,10 +125,16 @@ func (b *Brain) HandleMsgs(msg *wx.CountedContent) {
 
 			if msgType == 1 {
 				b.wx.SendTextMsg(c, to)
-			} else {
-				// TODO: 这里的文件名需要处理一下
-				path, _ := m[`localFileId`].(string)
-				b.wx.SendFile(`.ggbot/media/`+path+`.jpeg`, to)
+			} else if m[`isMediaMsg`].(bool) {
+				path, err := b.wx.DownloadMedia(m[`MediaMsgDownloadUrl`].(string), m[`MsgId`].(string))
+				defer utils.DeleteFile(path)
+				if err != nil {
+					logger.Error(err)
+				}
+				err = b.wx.SendFile(path, to)
+				if err != nil {
+					logger.Error(err)
+				}
 			}
 		}
 	}
