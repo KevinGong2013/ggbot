@@ -179,6 +179,8 @@ func WakeUp(up UUIDProcessor) (*WeChat, error) {
 
 	// 处理群消息的
 	wechat.RegisterModule(newFlatten(wechat))
+	// 处理多媒体消息
+	wechat.RegisterModule(newMediaMsgMap(wechat))
 
 	return wechat, nil
 }

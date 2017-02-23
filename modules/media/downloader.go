@@ -1,16 +1,10 @@
 package media
 
 import (
-	"io/ioutil"
-	"net/http"
 	"os"
-	"path/filepath"
 
-	filetype "gopkg.in/h2non/filetype.v1"
-
+	wx "github.com/KevinGong2013/ggbot/wechat"
 	log "github.com/Sirupsen/logrus"
-	"github.com/KevinGong2013/ggbot/utils"
-	"github.com/KevinGong2013/ggbot/wechat"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -20,7 +14,7 @@ var logger = log.WithFields(log.Fields{
 // Downloader ...
 type Downloader struct {
 	dir string
-	wx  *wechat.WeChat
+	wx  *wx.WeChat
 }
 
 // NewDownloader ...
@@ -38,40 +32,33 @@ func NewDownloader(path string) (*Downloader, error) {
 	return &Downloader{path, nil}, nil
 }
 
-func (d *Downloader) download(url string, name string) {
-	if d.wx != nil {
-		req, err := http.NewRequest(`GET`, url, nil)
-		if err != nil {
-			logger.Error(err)
-			return
-		}
+// WechatDidLogin ...
+func (d *Downloader) WechatDidLogin(wechat *wx.WeChat) {
+	d.wx = wechat
+}
 
-		req.Header.Set(`Range`, `bytes=0-`) // 只有小视频才需要加这个headers
+// WechatDidLogout ...
+func (d *Downloader) WechatDidLogout(wechat *wx.WeChat) {
+}
 
-		resp, err := d.wx.Client.Do(req)
-		defer resp.Body.Close()
+// MapMsgs ...
+func (d *Downloader) MapMsgs(msg *wx.CountedContent) {
+}
 
-		if err != nil {
-			logger.Error(err)
-		} else {
-			data, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
-
-			t, err := filetype.Get(data)
-			if err != nil {
-				logger.Error(err)
-				return
-			}
-
-			err = utils.CreateFile(filepath.Join(d.dir, name+`.`+t.Extension), data, false)
-			if err == nil {
-				logger.Debugf(`download finished %s`, name)
-			} else {
-				logger.Error(err)
-			}
+// HandleMsgs ...
+func (d *Downloader) HandleMsgs(msg *wx.CountedContent) {
+	for _, m := range msg.Content {
+		if m[`isMediaMsg`].(bool) {
+			url, _ := m[`MediaMsgDownloadUrl`].(string)
+			name, _ := m[`MsgId`].(string)
+			go func() {
+				p, err := d.wx.DownloadMedia(url, d.dir+`/`+name)
+				if err != nil {
+					logger.Error(err)
+				} else {
+					logger.Infof(`did download file to %s`, p)
+				}
+			}()
 		}
 	}
 }

@@ -217,7 +217,7 @@ func (wechat *WeChat) UploadMedia(path string) (string, error) {
 }
 
 // DownloadMedia use to download a voice or immage msg
-func (wechat *WeChat) DownloadMedia(url string, name string) (string, error) {
+func (wechat *WeChat) DownloadMedia(url string, localPath string) (string, error) {
 
 	req, err := http.NewRequest(`GET`, url, nil)
 	if err != nil {
@@ -242,7 +242,7 @@ func (wechat *WeChat) DownloadMedia(url string, name string) (string, error) {
 		return ``, err
 	}
 
-	path := filepath.Join(debugPath, name+`.`+t.Extension)
+	path := filepath.Join(localPath + `.` + t.Extension)
 	err = utils.CreateFile(path, data, false)
 	if err != nil {
 		return ``, err

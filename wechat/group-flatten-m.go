@@ -3,17 +3,17 @@ package wechat
 import "strings"
 
 // Flatten ...
-type Flatten struct {
+type flatten struct {
 	wx *WeChat
 }
 
 // NewFlatten ...
-func newFlatten(wechat *WeChat) *Flatten {
-	return &Flatten{wechat}
+func newFlatten(wechat *WeChat) *flatten {
+	return &flatten{wechat}
 }
 
 // MapMsgs ...
-func (f *Flatten) MapMsgs(msg *CountedContent) {
+func (f *flatten) MapMsgs(msg *CountedContent) {
 	for _, m := range msg.Content {
 
 		fromID, _ := m[`FromUserName`].(string)
@@ -59,4 +59,4 @@ func (f *Flatten) MapMsgs(msg *CountedContent) {
 }
 
 // HandleMsgs ...
-func (f *Flatten) HandleMsgs(msg *CountedContent) {}
+func (f *flatten) HandleMsgs(msg *CountedContent) {}
