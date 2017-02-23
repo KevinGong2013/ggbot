@@ -40,9 +40,14 @@ func NewTimerCh(du time.Duration) chan Event {
 	return t
 }
 
+// AddTimer ..
+func (ms *MsgStream) AddTimer(du time.Duration) {
+	ms.Merge(`timer`, NewTimerCh(du))
+}
+
 // AddTimer ...
 func AddTimer(du time.Duration) {
-	DefaultMsgStream.Merge(`timer`, NewTimerCh(du))
+	DefaultMsgStream.AddTimer(du)
 }
 
 // NewTimingCh ...
@@ -83,5 +88,10 @@ func NewTimingCh(hm string) chan Event {
 
 // AddTiming ...
 func AddTiming(hm string) {
-	DefaultMsgStream.Merge(`timing`, NewTimingCh(hm))
+	DefaultMsgStream.AddTiming(hm)
+}
+
+// AddTiming ...
+func (ms *MsgStream) AddTiming(hm string) {
+	ms.Merge(`timing`, NewTimingCh(hm))
 }
