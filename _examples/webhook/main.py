@@ -3,7 +3,7 @@
 # 先执行 python main.py 然后运行ggbot 会收到login msg contact 的消息推送
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 
-class webhookHandler(BaseHTTPRequestHandler):
+class WebhookHandler(BaseHTTPRequestHandler):
     def do_POST(self):
 
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
@@ -14,7 +14,7 @@ class webhookHandler(BaseHTTPRequestHandler):
 
 #Create a web server and define the handler to manage the
 #incoming request
-server = HTTPServer(('', 3288), webhookHandler)
+server = HTTPServer(('', 3288), WebhookHandler)
 
 print 'Started httpserver on port 3288'
 
