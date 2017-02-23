@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -212,6 +214,41 @@ func (wechat *WeChat) UploadMedia(path string) (string, error) {
 	}
 
 	return ``, err
+}
+
+// DownloadMedia use to download a voice or immage msg
+func (wechat *WeChat) DownloadMedia(url string, name string) (string, error) {
+
+	req, err := http.NewRequest(`GET`, url, nil)
+	if err != nil {
+		return ``, err
+	}
+
+	req.Header.Set(`Range`, `bytes=0-`) // 只有小视频才需要加这个headers
+
+	resp, err := wechat.Client.Do(req)
+	defer resp.Body.Close()
+
+	if err != nil {
+		return ``, err
+	}
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return ``, err
+	}
+
+	t, err := filetype.Get(data)
+	if err != nil {
+		return ``, err
+	}
+
+	path := filepath.Join(debugPath, name+`.`+t.Extension)
+	err = utils.CreateFile(path, data, false)
+	if err != nil {
+		return ``, err
+	}
+
+	return path, nil
 }
 
 // NewMsg create new message instance
