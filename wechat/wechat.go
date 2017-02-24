@@ -174,13 +174,13 @@ func WakeUp(up UUIDProcessor) (*WeChat, error) {
 		return nil, err
 	}
 
-	wechat.handleServerEvent()
-	wechat.keepAlive()
-
 	// 处理群消息的
 	wechat.RegisterModule(newFlatten(wechat))
 	// 处理多媒体消息
 	wechat.RegisterModule(newMediaMsgMap(wechat))
+
+	wechat.handleServerEvent()
+	wechat.keepAlive()
 
 	return wechat, nil
 }

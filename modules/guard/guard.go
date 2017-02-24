@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/KevinGong2013/ggbot/utils"
 	wx "github.com/KevinGong2013/ggbot/wechat"
@@ -84,7 +83,6 @@ func (g *Guard) WechatDidLogout(wechat *wx.WeChat) {
 
 // MapMsgs ...
 func (g *Guard) MapMsgs(msg *wx.CountedContent) {
-
 	for _, m := range msg.Content {
 		m[`isAddFriendMsg`] = false
 		m[`needWelecome`] = false
@@ -93,16 +91,6 @@ func (g *Guard) MapMsgs(msg *wx.CountedContent) {
 			m[`isAddFriendMsg`] = true
 			rInfo := m[`RecommendInfo`].(map[string]interface{})
 			m[`AddFriendUserName`] = rInfo[`UserName`]
-		} else if mt == 10000 && m[`IsGroupMsg`].(bool) { // 判断是不是入群提醒
-			content := m[`Content`].(string)
-			if strings.Contains(content, `加入群聊`) {
-				// 查找nickname
-				nn, err := utils.Search(content, `"`, `"通过`)
-				if err == nil {
-					m[`needWelecome`] = true
-					m[`needWelecomeNickName`] = nn
-				}
-			}
 		}
 	}
 }
@@ -117,12 +105,6 @@ func (g *Guard) HandleMsgs(msg *wx.CountedContent) {
 				logger.Error(err)
 			}
 			err = g.wx.SendTextMsg(`新添加了一个好友`, `filehelper`)
-			if err != nil {
-				logger.Error(err)
-			}
-		} else if m[`needWelecome`].(bool) {
-			nn := m[`needWelecomeNickName`].(string)
-			err := g.wx.SendTextMsg(`欢迎【`+nn+`】加入群聊`, m[`FromUserName`].(string))
 			if err != nil {
 				logger.Error(err)
 			}

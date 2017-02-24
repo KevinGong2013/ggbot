@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -322,10 +321,12 @@ func (wechat *WeChat) keepAlive() {
 
 		logger.Info(`CONGRATULATION login successed`)
 
+		logger.Info(`begin sync contact`)
 		err = wechat.SyncContact()
 		if err != nil {
 			logger.Errorf(`sync contact error: %v`, err)
 		}
+		logger.Info(`sync contact successfully`)
 
 		loginState <- 1
 
@@ -343,11 +344,7 @@ func (wechat *WeChat) keepAlive() {
 
 func (wechat *WeChat) cachedCookies() ([]*http.Cookie, error) {
 
-	file, err := os.Open(cookieCachePath)
-	if err != nil {
-		return nil, err
-	}
-	bs, err := ioutil.ReadAll(file)
+	bs, err := ioutil.ReadFile(cookieCachePath)
 	if err != nil {
 		return nil, err
 	}
@@ -389,12 +386,7 @@ func (wechat *WeChat) refreshCookieCache(cookies []*http.Cookie) {
 
 func (wechat *WeChat) cachedLoginURL() (string, error) {
 
-	ufile, err := os.Open(baseURLCachePath)
-	if err != nil {
-		return ``, err
-	}
-
-	ubs, err := ioutil.ReadAll(ufile)
+	ubs, err := ioutil.ReadFile(baseURLCachePath)
 	if err != nil {
 		return ``, err
 	}

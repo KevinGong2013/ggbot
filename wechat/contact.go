@@ -63,6 +63,7 @@ type getContactResponse struct {
 	Response
 	MemberCount int
 	MemberList  []map[string]interface{}
+	Seq         float64
 }
 
 type batchGetContactResponse struct {
@@ -87,22 +88,46 @@ func (contact *Contact) To() string {
 	return contact.UserName
 }
 
-// SyncContact with Wechat server.
-func (wechat *WeChat) SyncContact() error {
+func (wechat *WeChat) getContacts(seq float64) ([]map[string]interface{}, float64, error) {
 
-	wechat.resetCache()
-
-	url := fmt.Sprintf(`%s/webwxgetcontact?%s&%s&r=%s`, wechat.BaseURL, wechat.PassTicketKV(), wechat.SkeyKV(), utils.Now())
+	url := fmt.Sprintf(`%s/webwxgetcontact?%s&%s&r=%s&seq=%v`, wechat.BaseURL, wechat.PassTicketKV(), wechat.SkeyKV(), utils.Now(), seq)
 	resp := new(getContactResponse)
 
 	err := wechat.Excute(url, nil, resp)
+
 	if err != nil {
-		return err
+		return nil, 0, err
 	}
+
+	return resp.MemberList, resp.Seq, nil
+}
+
+// SyncContact with Wechat server.
+func (wechat *WeChat) SyncContact() error {
+	wechat.resetCache()
+
+	seq := float64(-1)
+
+	for seq != 0 {
+		if seq == -1 {
+			seq = 0
+		}
+		memberList, s, err := wechat.getContacts(seq)
+		if err != nil {
+			return err
+		}
+		wechat.updateLocalContact(memberList)
+		seq = s
+	}
+
+	return nil
+}
+
+func (wechat *WeChat) updateLocalContact(memberList []map[string]interface{}) {
 
 	var gs []string
 
-	for _, v := range resp.MemberList {
+	for _, v := range memberList {
 
 		vf, _ := v[`VerifyFlag`].(float64)
 		un, _ := v[`UserName`].(string)
@@ -118,12 +143,10 @@ func (wechat *WeChat) SyncContact() error {
 
 		wechat.saveContactToCache(v)
 	}
-
+	logger.Debugf(`---------------%s`, gs)
 	for _, g := range gs {
 		wechat.FourceUpdateGroup(g)
 	}
-
-	return nil
 }
 
 func (wechat *WeChat) fetchGroups(usernames []string) ([]map[string]interface{}, error) {
