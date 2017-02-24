@@ -189,8 +189,6 @@ func (wechat *WeChat) fetchGroupsMembers(groups []map[string]interface{}) ([]map
 		encryChatRoomID, _ := group[`EncryChatRoomId`].(string)
 		members, _ := group[`MemberList`].([]interface{})
 
-		logger.Debugf(`members %v`, members)
-
 		for _, m := range members {
 			mmap, _ := m.(map[string]interface{})
 			u, _ := mmap[`UserName`].(string)
