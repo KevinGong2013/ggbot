@@ -143,7 +143,7 @@ func (wechat *WeChat) updateLocalContact(memberList []map[string]interface{}) {
 
 		wechat.saveContactToCache(v)
 	}
-	logger.Debugf(`---------------%s`, gs)
+
 	for _, g := range gs {
 		wechat.FourceUpdateGroup(g)
 	}
