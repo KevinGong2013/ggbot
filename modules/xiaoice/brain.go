@@ -39,9 +39,6 @@ func (b *Brain) WechatDidLogout(wechat *wx.WeChat) {
 // MapMsgs ...
 func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 	for _, m := range msg.Content {
-
-		// msgType, _ := m[`MsgType`].(float64)
-
 		isSendByMySelf, _ := m[`IsSendByMySelf`].(bool)
 		if isSendByMySelf {
 			continue
@@ -64,11 +61,11 @@ func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 				len := len(b.waittingReplay)
 				if len > 0 {
 					b.Lock()
-					defer b.Unlock()
 					m[`isXiaoiceReplay`] = true
 					m[`ReplayUserName`] = b.waittingReplay[len-1]
 					m[`localFileId`] = m[`MsgId`]
 					b.waittingReplay = b.waittingReplay[:len-1]
+					b.Unlock()
 				} else {
 					logger.Warnf(`xiaoice replay %s`, m)
 				}
@@ -95,12 +92,9 @@ func (b *Brain) HandleMsgs(msg *wx.CountedContent) {
 
 			if b.xiaoice != nil {
 				var err error
-				logger.Debug(`args ...interface{}1`)
 				if m[`isMediaMsg`].(bool) {
-					logger.Debug(`args ...interface{}2`)
 					path, e := b.wx.DownloadMedia(m[`MediaMsgDownloadUrl`].(string), m[`MsgId`].(string))
 					defer utils.DeleteFile(path)
-					logger.Debugf(`args ...interface{}%s`, path)
 					if e == nil {
 						err = b.wx.SendFile(path, b.xiaoice.To())
 					} else {
@@ -111,8 +105,8 @@ func (b *Brain) HandleMsgs(msg *wx.CountedContent) {
 				}
 				if err == nil {
 					b.Lock()
-					defer b.Unlock()
 					b.waittingReplay = append(b.waittingReplay, to)
+					b.Unlock()
 				} else {
 					logger.Error(err)
 				}
