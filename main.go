@@ -122,6 +122,7 @@ func createDefaultConf() (*Conf, error) {
 				`msg-webhook`:         `http://127.0.0.1:3288/msg`,
 				`contact-webhook`:     `http://127.0.0.1:3288/contact`,
 				`login-state-webhook`: `http://127.0.0.1:3288/login_state`,
+				`uuid-webhook`:        `http://127.0.0.1:3288/uuid`,
 			},
 			`storage`: {
 				`path`: `.ggbot/db`,
@@ -165,7 +166,8 @@ func registerModules(conf *Conf, bot *wechat.WeChat) error {
 			msgWebhook := v[`msg-webhook`].(string)
 			contactWebhook := v[`contact-webhook`].(string)
 			loginWebhook := v[`login-state-webhook`].(string)
-			bot.RegisterModule(service.NewWrapper(msgWebhook, contactWebhook, loginWebhook))
+			uuidWebhook := v[`uuid-webhook`].(string)
+			bot.RegisterModule(service.NewWrapper(msgWebhook, contactWebhook, loginWebhook, uuidWebhook))
 		case `tuling`:
 			apiKey := v[`api-key`].(string)
 			if len(apiKey) == 0 {
