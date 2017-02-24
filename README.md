@@ -259,7 +259,17 @@ wxbot.RegisterModule(new(echo.Echo)) // 很简单吧
 这是用来把二维码直接绘制在`terminal`的模块，安装导入和上一个包一样，我们来看注册
 
 ```go
-wxbot, err := wechat.WeekUp(&gguuid.UUIDProcessor{})
+wxbot, err := wechat.WeekUp(gguid.New())
+```
+### guard
+这是用来同意别人的添加好友请求和添加新入群通知用的模块，而且提供了主动加好友的方法，安装导入和上一个包一样，我们来看注册
+
+```go
+
+g := guard.NewGuard(true)
+wxbot.RegisterModule(g) // 很简单吧
+
+g.AddFriend(`12334`, `我可以加你为好友吗？`)
 ```
 ### media
 这个模块是在收到多媒体消息以后，自动下载媒体文件，并且以消息ID为文件名放方便我们索引， 安装导入和上一个包一样，我们来看注册
