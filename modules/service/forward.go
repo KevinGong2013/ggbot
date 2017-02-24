@@ -11,11 +11,7 @@ type Forward struct {
 	msgWebhookURL        string
 	contactWebhookURL    string
 	loginStateWebhookURL string
-}
-
-// NewForward ...
-func newForward(msgWebhookURL, contactWebhookURL, loginStateWebhookURL string) *Forward {
-	return &Forward{msgWebhookURL, contactWebhookURL, loginStateWebhookURL}
+	uuidWebhookURL       string
 }
 
 func (f *Forward) forward(url string, data interface{}) error {

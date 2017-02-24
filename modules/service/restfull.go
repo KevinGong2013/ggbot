@@ -25,9 +25,9 @@ type Wrapper struct {
 }
 
 // NewWrapper ...
-func NewWrapper(msgWebhookURL, contactWebhookURL, loginStateWebhookURL string) *Wrapper {
+func NewWrapper(msgWebhookURL, contactWebhookURL, loginStateWebhookURL, uuidWebhookURL string) *Wrapper {
 
-	f := &Forward{msgWebhookURL, contactWebhookURL, loginStateWebhookURL}
+	f := &Forward{msgWebhookURL, contactWebhookURL, loginStateWebhookURL, uuidWebhookURL}
 	r := chi.NewRouter()
 	// A good base middleware stack
 	r.Use(middleware.RequestID)
