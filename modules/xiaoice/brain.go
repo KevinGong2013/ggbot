@@ -92,7 +92,7 @@ func (b *Brain) HandleMsgs(msg *wx.CountedContent) {
 
 			if b.xiaoice != nil {
 				var err error
-				if m[`isMediaMsg`].(bool) {
+				if ok, isM := m[`isMediaMsg`].(bool); ok && isM {
 					path, e := b.wx.DownloadMedia(m[`MediaMsgDownloadUrl`].(string), m[`MsgId`].(string))
 					defer utils.DeleteFile(path)
 					if e == nil {
