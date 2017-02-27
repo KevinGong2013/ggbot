@@ -11,6 +11,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
+	"github.com/KevinGong2013/ggbot/modules/assistant"
 	"github.com/KevinGong2013/ggbot/modules/echo"
 	"github.com/KevinGong2013/ggbot/modules/gguuid"
 	"github.com/KevinGong2013/ggbot/modules/media"
@@ -113,6 +114,10 @@ func createDefaultConf() (*Conf, error) {
 		LogLevel: 0,
 		Debug:    true,
 		Modules: map[string]map[string]interface{}{
+			`assistant`: {
+				`groupName`: `GGBot测试群`,
+				`welcome`:   `大家鼓掌欢迎 👏👏👏`,
+			},
 			`echo`:   {},
 			`gguuid`: {},
 			`media`: {
@@ -152,6 +157,10 @@ func registerModules(conf *Conf, bot *wechat.WeChat) error {
 
 	for k, v := range conf.Modules {
 		switch k {
+		case `assistant`:
+			gn := v[`groupName`].(string)
+			welcome := v[`welcome`].(string)
+			bot.RegisterModule(assistant.NewAssistant(gn, welcome))
 		case `echo`:
 			bot.RegisterModule(echo.New())
 		case `media`:

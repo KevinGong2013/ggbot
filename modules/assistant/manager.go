@@ -20,8 +20,8 @@ type GroupManager struct {
 }
 
 // NewAssistant ...
-func NewAssistant(groupNickName string) *GroupManager {
-	return &GroupManager{groupNickName, `welcome`, nil}
+func NewAssistant(groupNickName string, welcome string) *GroupManager {
+	return &GroupManager{groupNickName, welcome, nil}
 }
 
 // WechatDidLogin ...

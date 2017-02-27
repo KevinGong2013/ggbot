@@ -57,14 +57,14 @@ func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 		}
 
 		switch contact.Type {
-		case wx.ContactTypeFriend:
+		case wx.Friend:
 			m[`needTulingResponse`] = true
 			m[`info`] = m[`Content`]
 			m[`to`] = m[`FromUserName`]
 			m[`userid`] = contact.NickName
-		case wx.ContactTypeOfficial:
+		case wx.Offical:
 			m[`needTulingResponse`] = false
-		case wx.ContactTypeGroup:
+		case wx.Group:
 			m[`needTulingResponse`] = m[`AtMe`]
 			m[`info`] = m[`Content`]
 			m[`to`] = m[`FromUserName`]
