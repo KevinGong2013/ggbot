@@ -29,7 +29,17 @@ func NewBrain() *Brain {
 // WechatDidLogin ...
 func (b *Brain) WechatDidLogin(wechat *wx.WeChat) {
 	b.wx = wechat
-	b.xiaoice, _ = wechat.ContactByNickName(`小冰`)
+	cs, err := wechat.ContactByNickName(`小冰`)
+	if err != nil {
+		logger.Error(`can't find xiaoice's contact info`)
+		return
+	}
+	for _, c := range cs {
+		if c.Type == wx.Offical {
+			b.xiaoice = c
+			break
+		}
+	}
 }
 
 // WechatDidLogout ...
@@ -52,11 +62,11 @@ func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 		}
 
 		switch contact.Type {
-		case wx.ContactTypeFriend:
+		case wx.Friend:
 			m[`needXiaoiceResponse`] = true
 			m[`xiaoice_info`] = m[`Content`]
 			m[`xiaoice_to`] = m[`FromUserName`]
-		case wx.ContactTypeOfficial:
+		case wx.Offical:
 			if b.xiaoice.NickName == contact.NickName {
 				len := len(b.waittingReplay)
 				if len > 0 {
@@ -73,7 +83,7 @@ func (b *Brain) MapMsgs(msg *wx.CountedContent) {
 				logger.Warn(`offical msg %s`, contact.NickName)
 			}
 			m[`needXiaoiceResponse`] = false
-		case wx.ContactTypeGroup:
+		case wx.Group:
 			m[`needXiaoiceResponse`] = true
 			m[`xiaoice_info`] = m[`Content`]
 			m[`xiaoice_to`] = m[`FromUserName`]

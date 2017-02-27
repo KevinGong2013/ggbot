@@ -3,51 +3,15 @@ package wechat
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/KevinGong2013/ggbot/utils"
-	"github.com/allegro/bigcache"
 )
-
-// ContactIterator iterator all contacts
-type ContactIterator struct {
-	it *bigcache.EntryInfoIterator
-}
-
-// Contact is wx Account struct
-type Contact struct {
-	UserName          string
-	NickName          string
-	HeadImgURL        string `json:"HeadImgUrl"`
-	RemarkName        string
-	PYInitial         string
-	PYQuanPin         string
-	RemarkPYInitial   string
-	RemarkPYQuanPin   string
-	HideInputBarFlag  float64
-	StarFriend        float64
-	Sex               float64
-	Signature         string
-	AppAccountFlag    float64
-	VerifyFlag        float64
-	ContactFlag       float64
-	WebWxPluginSwitch float64
-	HeadImgFlag       float64
-	SnsFlag           float64
-	Province          string
-	City              string
-	Alias             string
-	DisplayName       string
-	KeyWord           string
-	EncryChatRoomID   string `json:"EncryChatRoomId"`
-	IsOwner           float64
-	Type              int
-	ChangeType        int // 0 修改 1 删除
-	MemberCount       float64
-	MemberList        []*Contact
-}
 
 type updateGroupRequest struct {
 	BaseRequest
@@ -72,15 +36,6 @@ type batchGetContactResponse struct {
 	ContactList []map[string]interface{}
 }
 
-const (
-	// ContactTypeFriend friend
-	ContactTypeFriend = 1
-	// ContactTypeGroup group
-	ContactTypeGroup = 2
-	// ContactTypeOfficial official
-	ContactTypeOfficial = 3
-)
-
 var maxCountOnceLoadGroupMember = 50
 
 // To is contact's ID can be used in msg struct
@@ -104,9 +59,11 @@ func (wechat *WeChat) getContacts(seq float64) ([]map[string]interface{}, float6
 
 // SyncContact with Wechat server.
 func (wechat *WeChat) SyncContact() error {
-	wechat.resetCache()
 
+	// 从头拉取通讯录
 	seq := float64(-1)
+
+	var cts []map[string]interface{}
 
 	for seq != 0 {
 		if seq == -1 {
@@ -116,37 +73,79 @@ func (wechat *WeChat) SyncContact() error {
 		if err != nil {
 			return err
 		}
-		wechat.updateLocalContact(memberList)
 		seq = s
+		cts = append(cts, memberList...)
 	}
 
-	return nil
-}
+	var groupUserNames []string
 
-func (wechat *WeChat) updateLocalContact(memberList []map[string]interface{}) {
+	var tempIdxMap = make(map[string]int)
 
-	var gs []string
-
-	for _, v := range memberList {
+	for idx, v := range cts {
 
 		vf, _ := v[`VerifyFlag`].(float64)
 		un, _ := v[`UserName`].(string)
 
 		if vf/8 != 0 {
-			v[`Type`] = ContactTypeOfficial
+			v[`Type`] = Offical
 		} else if strings.HasPrefix(un, `@@`) {
-			v[`Type`] = ContactTypeGroup
-			gs = append(gs, un)
+			v[`Type`] = Group
+			groupUserNames = append(groupUserNames, un)
 		} else {
-			v[`Type`] = ContactTypeFriend
+			v[`Type`] = Friend
+		}
+		tempIdxMap[un] = idx
+	}
+
+	groups, _ := wechat.fetchGroups(groupUserNames)
+
+	for _, group := range groups {
+
+		groupUserName := group[`UserName`].(string)
+		contacts := group[`MemberList`].([]interface{})
+
+		for _, c := range contacts {
+			ct := c.(map[string]interface{})
+			un := ct[`UserName`].(string)
+			if idx, found := tempIdxMap[un]; found {
+				cts[idx][`Type`] = FriendAndMember
+			} else {
+				ct[`HeadImgUrl`] = fmt.Sprintf(`/cgi-bin/mmwebwx-bin/webwxgeticon?seq=0&username=%s&chatroomid=%s&skey=`, un, groupUserName)
+				ct[`Type`] = Member
+				cts = append(cts, ct)
+			}
 		}
 
-		wechat.saveContactToCache(v)
+		group[`Type`] = Group
+		idx := tempIdxMap[groupUserName]
+		cts[idx] = group
 	}
 
-	for _, g := range gs {
-		wechat.FourceUpdateGroup(g)
+	wechat.syncContacts(cts)
+
+	return nil
+}
+
+// GetContactHeadImg ...
+func (wechat *WeChat) GetContactHeadImg(c *Contact) ([]byte, error) {
+
+	urlOBJ, err := url.Parse(wechat.BaseURL)
+
+	if err != nil {
+		return nil, err
 	}
+
+	host := urlOBJ.Host
+
+	url := fmt.Sprintf(`https://%s%s`, host, c.HeadImgURL)
+
+	resp, err := wechat.Client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return ioutil.ReadAll(resp.Body)
 }
 
 func (wechat *WeChat) fetchGroups(usernames []string) ([]map[string]interface{}, error) {
@@ -229,11 +228,12 @@ func (wechat *WeChat) fetchMembers(list []map[string]string) []map[string]interf
 // UpateGroupIfNeeded ...
 func (wechat *WeChat) UpateGroupIfNeeded(groupID string) {
 
-	bs, _ := wechat.contactCache.Get(groupID)
-
-	if bs == nil {
-		wechat.FourceUpdateGroup(groupID)
+	if _, err := wechat.cache.ggidsByNickName(groupID); err == nil {
+		logger.Debug(`already has group infomation`)
+		return
 	}
+
+	wechat.FourceUpdateGroup(groupID)
 }
 
 // FourceUpdateGroup upate group infomation
@@ -245,11 +245,12 @@ func (wechat *WeChat) FourceUpdateGroup(groupID string) {
 		return
 	}
 
-	// 保存群组
-	for _, v := range groups {
-		v[`Type`] = ContactTypeGroup
-		wechat.saveContactToCache(v)
-	}
+	group := groups[0]
+	group[`Type`] = Group
+
+	var cts []map[string]interface{}
+
+	cts = append(cts, groups[0])
 
 	memberList, err := wechat.fetchGroupsMembers(groups)
 	if err != nil {
@@ -258,47 +259,77 @@ func (wechat *WeChat) FourceUpdateGroup(groupID string) {
 	}
 
 	for _, v := range memberList {
-		v[`Type`] = ContactTypeFriend
-		wechat.saveContactToCache(v)
+		if _, found := wechat.cache.userGG[v[`UserName`].(string)]; found {
+			v[`Type`] = FriendAndMember
+		} else {
+			v[`Type`] = Group
+		}
 	}
+
+	wechat.appendContacts(append(cts, memberList...))
 }
 
 // ContactByUserName ...
 func (wechat *WeChat) ContactByUserName(un string) (*Contact, error) {
-	bs, err := wechat.contactCache.Get(un)
-	if err != nil {
-		return nil, err
+
+	ggid, found := wechat.cache.userGG[un]
+	if !found {
+		return nil, errors.New(`not found`)
 	}
-	var contact *Contact
-	err = json.NewDecoder(bytes.NewReader(bs)).Decode(&contact)
-	if err != nil {
-		return nil, err
-	}
-	return contact, nil
+
+	return wechat.cache.contactByGGID(ggid)
 }
 
 // UserNameByNickName ..
-func (wechat *WeChat) UserNameByNickName(nn string) (string, error) {
+func (wechat *WeChat) UserNameByNickName(nn string) ([]string, error) {
 
-	bs, err := wechat.nicknameCache.Get(nn)
-	if err != nil {
-		return ``, nil
-	}
-	return string(bs), nil
-}
-
-// ContactByNickName search contact with nick name
-func (wechat *WeChat) ContactByNickName(nn string) (*Contact, error) {
-	un, err := wechat.UserNameByNickName(nn)
+	cs, err := wechat.ContactByNickName(nn)
 	if err != nil {
 		return nil, err
 	}
-	return wechat.ContactByUserName(un)
+
+	var uns []string
+	for _, c := range cs {
+		uns = append(uns, c.UserName)
+	}
+
+	return uns, nil
 }
 
-// ContactIterator use this iterator all contacts // TODO
-func (wechat *WeChat) ContactIterator() *ContactIterator {
-	return &ContactIterator{wechat.contactCache.Iterator()}
+// ContactByNickName search contact with nick name
+func (wechat *WeChat) ContactByNickName(nn string) ([]*Contact, error) {
+	ggids, found := wechat.cache.nickGG[nn]
+	if !found {
+		return nil, errors.New(`not found`)
+	}
+	var cs []*Contact
+	for _, ggid := range ggids {
+		c, err := wechat.cache.contactByGGID(ggid)
+		if err == nil {
+			cs = append(cs, c)
+		}
+	}
+	if len(cs) > 0 {
+		return cs, nil
+	}
+	return nil, errors.New(`not found`)
+}
+
+// ContactByGGID ...
+func (wechat *WeChat) ContactByGGID(id string) (*Contact, error) {
+	if c, found := wechat.cache.ggmap[id]; found {
+		return c, nil
+	}
+	return nil, errors.New(`not found`)
+}
+
+// AllContacts ...
+func (wechat *WeChat) AllContacts() []*Contact {
+	var vs []*Contact
+	for _, c := range wechat.cache.ggmap {
+		vs = append(vs, c)
+	}
+	return vs
 }
 
 // TODO
@@ -323,24 +354,6 @@ func (wechat *WeChat) modifyRemarkName(un string) (string, error) {
 	return `Test`, nil
 }
 
-func (wechat *WeChat) saveContactToCache(contact map[string]interface{}) {
-	un, _ := contact[`UserName`].(string)
-	bs, e := json.Marshal(contact)
-	if e != nil {
-		logger.Error(e)
-	} else {
-		wechat.contactCache.Set(un, bs)
-		nn, _ := contact[`NickName`].(string)
-		wechat.nicknameCache.Set(nn, []byte(un))
-	}
-}
-
-func (wechat *WeChat) resetCache() {
-
-	wechat.contactCache.Reset()
-	wechat.nicknameCache.Reset()
-}
-
 func (wechat *WeChat) contactDidChange(cts *CountedContent, changeType int) {
 	if changeType == 0 { // 修改
 		for _, v := range cts.Content {
@@ -348,14 +361,13 @@ func (wechat *WeChat) contactDidChange(cts *CountedContent, changeType int) {
 			un, _ := v[`UserName`].(string)
 
 			if vf/8 != 0 {
-				v[`Type`] = ContactTypeOfficial
+				v[`Type`] = Offical
 			} else if strings.HasPrefix(un, `@@`) {
-				v[`Type`] = ContactTypeGroup
+				v[`Type`] = Group
 			} else {
-				v[`Type`] = ContactTypeFriend
+				v[`Type`] = Friend
 			}
-
-			wechat.saveContactToCache(v)
 		}
+		wechat.appendContacts(cts.Content)
 	}
 }

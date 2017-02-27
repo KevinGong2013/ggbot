@@ -19,7 +19,6 @@ import (
 
 	"github.com/KevinGong2013/ggbot/utils"
 	log "github.com/Sirupsen/logrus"
-	"github.com/allegro/bigcache"
 )
 
 var logger = log.WithFields(log.Fields{
@@ -84,8 +83,7 @@ type WeChat struct {
 	UUIDProcessor UUIDProcessor
 	MySelf        Contact
 	IsLogin       bool
-	contactCache  *bigcache.BigCache
-	nicknameCache *bigcache.BigCache
+	cache         *cache
 	syncKey       map[string]interface{}
 	syncHost      string
 }
@@ -112,15 +110,6 @@ func newWeChat(up UUIDProcessor) (*WeChat, error) {
 		return nil, err
 	}
 
-	bc, err := bigcache.NewBigCache(bigcache.DefaultConfig(7 * 24 * time.Hour))
-	if err != nil {
-		return nil, err
-	}
-	nc, err := bigcache.NewBigCache(bigcache.DefaultConfig(7 * 24 * time.Hour))
-	if err != nil {
-		return nil, err
-	}
-
 	baseReq := new(BaseRequest)
 	baseReq.Ret = 1
 
@@ -129,8 +118,7 @@ func newWeChat(up UUIDProcessor) (*WeChat, error) {
 		BaseRequest:   baseReq,
 		UUIDProcessor: up,
 		IsLogin:       false,
-		contactCache:  bc,
-		nicknameCache: nc,
+		cache:         newCache(`.ggbot`),
 	}
 
 	return wechat, nil
