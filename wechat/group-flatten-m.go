@@ -19,14 +19,22 @@ func (f *flatten) MapMsgs(msg *CountedContent) {
 		fromID, _ := m[`FromUserName`].(string)
 
 		m[`IsSendByMySelf`] = fromID == f.wx.MySelf.UserName // TODO
-		m[`IsGroupMsg`] = true
+		isGroup := false
 
-		if !strings.HasPrefix(fromID, `@@`) { // TODO
-			m[`IsGroupMsg`] = false
+		toID := m[`ToUserName`].(string)
+
+		if strings.HasPrefix(fromID, `@@`) || strings.HasPrefix(toID, `@@`) { // TODO
+			isGroup = true
+		}
+
+		m[`IsGroupMsg`] = isGroup
+		if !isGroup {
 			continue
 		}
 
-		f.wx.UpateGroupIfNeeded(fromID)
+		if strings.HasPrefix(fromID, `@@`) {
+			f.wx.UpateGroupIfNeeded(fromID)
+		}
 
 		logger.Debugf(`will map group chat msg `)
 

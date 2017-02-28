@@ -172,17 +172,18 @@ func (wechat *WeChat) fetchGroups(usernames []string) ([]map[string]interface{},
 
 	wechat.Excute(url, bytes.NewReader(data), resp)
 
-	if !resp.IsSuccess() {
-		logger.Error(resp.Error())
+	if resp.IsSuccess() {
+		return resp.ContactList, nil
 	}
 
-	return resp.ContactList, nil
+	return nil, errors.New(`fetchGroups error`)
 }
 
 func (wechat *WeChat) fetchGroupsMembers(groups []map[string]interface{}) ([]map[string]interface{}, error) {
 
 	list := make([]map[string]string, 0)
 
+	logger.Debugf(`groups %s`, groups)
 	for _, group := range groups {
 
 		encryChatRoomID, _ := group[`EncryChatRoomId`].(string)
@@ -198,6 +199,7 @@ func (wechat *WeChat) fetchGroupsMembers(groups []map[string]interface{}) ([]map
 		}
 	}
 
+	logger.Debugf(`will load members: %s`, list)
 	return wechat.fetchMembers(list), nil
 }
 
@@ -219,7 +221,8 @@ func (wechat *WeChat) fetchMembers(list []map[string]string) []map[string]interf
 	wechat.Excute(url, bytes.NewReader(data), resp)
 
 	if !resp.IsSuccess() {
-		logger.Error(resp.Error())
+		err := fmt.Errorf(`list: %s`, list)
+		logger.Errorf(`fetchMembers error %s`, err)
 	}
 
 	return resp.ContactList
@@ -238,6 +241,8 @@ func (wechat *WeChat) UpateGroupIfNeeded(groupID string) {
 
 // FourceUpdateGroup upate group infomation
 func (wechat *WeChat) FourceUpdateGroup(groupID string) {
+
+	logger.Debugf(`will fource update group username: %s`, groupID)
 
 	groups, err := wechat.fetchGroups([]string{groupID})
 	if err != nil || len(groups) != 1 {

@@ -67,9 +67,24 @@ func newCache(path string) *cache {
 	}
 }
 
+func removeDuplicates(xs *[]string) {
+	found := make(map[string]bool)
+	j := 0
+	for i, x := range *xs {
+		if !found[x] {
+			found[x] = true
+			(*xs)[j] = (*xs)[i]
+			j++
+		}
+	}
+	*xs = (*xs)[:j]
+}
+
 func (c *cache) updateContact(contact *Contact) {
 	c.ggmap[contact.GGID] = contact
-	c.nickGG[contact.NickName] = append(c.nickGG[contact.NickName], contact.GGID)
+	ggids := append(c.nickGG[contact.NickName], contact.GGID)
+	removeDuplicates(&ggids)
+	c.nickGG[contact.NickName] = ggids
 	c.userGG[contact.UserName] = contact.GGID
 }
 
@@ -132,9 +147,8 @@ func (wechat *WeChat) syncContacts(cts []map[string]interface{}) {
 				nc.GGID = oc.GGID
 				nc.HeadHash = contactHeadImgHash(wechat, nc)
 				if nc.HeadHash != oc.HeadHash {
-					logger.Warnf(`我们认为[%s]同时修改了他的头像和otehr信息如果处理错误，
-					但是也有可能是有2个人同时修改了昵称，请仔细检查，如若有误
-					请手动更改cache文件中的mapping 关系 GGID: %s`, nc.NickName, nc.GGID)
+					logger.Warnf(`我们认为[%s]修改了他的头像，但是也有可能是有2个人同时修改了昵称,
+						请仔细检查,如若有误,请手动更改cache文件中的mapping 关系 GGID: %s`, nc.NickName, nc.GGID)
 				}
 				c.updateContact(nc)
 				delete(tempNickGG, nc.NickName)
@@ -239,9 +253,10 @@ func (wechat *WeChat) appendContacts(cts []map[string]interface{}) {
 		nc, _ := newContact(v)
 		// 看下系统中有没有
 		if ggid, found := c.userGG[nc.UserName]; found {
-			// 系统中已经从在了
+			// 系统中已经存在了
 			oc := c.ggmap[ggid]
 			nc.GGID = oc.GGID
+			nc.HeadHash = oc.HeadHash
 			c.updateContact(nc)
 		} else {
 			// 新建
@@ -259,6 +274,8 @@ func (wechat *WeChat) appendContacts(cts []map[string]interface{}) {
 			}
 		}
 	}
+
+	wechat.cache.writeToFile()
 }
 
 func (c *cache) contactByGGID(ggid string) (*Contact, error) {
