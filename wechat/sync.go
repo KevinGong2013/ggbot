@@ -151,6 +151,7 @@ func (wechat *WeChat) syncCheck() (string, string, error) {
 	if len(resp.Cookies()) > 0 {
 		wechat.refreshCookieCache(resp.Cookies())
 	}
+	wechat.refreshBaseInfo()
 
 	return code, selector, err
 }

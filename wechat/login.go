@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,8 +18,8 @@ import (
 	"github.com/skratchdot/open-golang/open"
 )
 
-var cookieCachePath = `.ggbot/cookie-cache`
-var baseURLCachePath = `.ggbot/login-url-cache`
+var cookieCachePath = `.ggbot/debug/cookie-cache.json`
+var baseInfoCachePath = `.ggbot/debug/basic-info-cache.json`
 
 // UUIDProcessor scan this uuid
 type UUIDProcessor interface {
@@ -56,7 +57,7 @@ func (dp *defaultUUIDProcessor) UUIDDidConfirm(err error) {
 	}
 }
 
-var retryTimes = time.Duration(1)
+var retryTimes = time.Duration(0)
 
 var loginState = make(chan int) // -1 登录失败 1登录成功
 
@@ -93,83 +94,112 @@ func (wechat *WeChat) beginLoginFlow() error {
 
 	logger.Info(`wait a moment, prepare login parameters ... ...`)
 
-	redirectURL, err := wechat.quickLogin()
+	cached, err := wechat.cachedInfo()
 
 	if err == nil {
-		logger.Debugf(`redirectURL: [%s]`, redirectURL)
+
+		logger.Info(`will attempt recoverer sessoin`)
+
+		wechat.BaseURL = cached[`baseURL`].(string)
+		wechat.BaseRequest = cached[`baseRequest`].(*BaseRequest)
+		cookies := cached[`cookies`].([]*http.Cookie)
+		u, ue := url.Parse(wechat.BaseURL)
+		if ue != nil {
+			return ue
+		}
+		wechat.Client.Jar.SetCookies(u, cookies)
+
+		err = wechat.init()
+		if err != nil {
+			utils.DeleteFile(cookieCachePath)
+		}
+
+		return err
 	}
+	logger.Error(err)
+
+	// 1.
+	uuid, e := wechat.fetchUUID()
+
+	if e != nil {
+		return e
+	}
+
+	// 2.
+	err = wechat.UUIDProcessor.ProcessUUID(uuid)
 
 	if err != nil {
+		return err
+	}
 
-		logger.Info(err)
+	// 3.
+	redirectURL, code, tip := ``, ``, 1
 
-		utils.DeleteFile(cookieCachePath)
-		// 1.
-		uuid, err := wechat.fetchUUID()
-
+	for code != httpOK {
+		redirectURL, code, tip, err = wechat.waitConfirmUUID(uuid, tip)
 		if err != nil {
-			return err
-		}
-
-		// 2.
-		err = wechat.UUIDProcessor.ProcessUUID(uuid)
-
-		if err != nil {
-			return err
-		}
-
-		// 3.
-		code, tip := ``, 1
-
-		for code != httpOK {
-			redirectURL, code, tip, err = wechat.waitConfirmUUID(uuid, tip)
-			if err != nil {
-				wechat.UUIDProcessor.UUIDDidConfirm(err)
-				return err
-			}
-		}
-
-		wechat.UUIDProcessor.UUIDDidConfirm(nil)
-
-		req, _ := http.NewRequest(`GET`, redirectURL, nil)
-
-		// 4.
-		if err = wechat.login(req); err != nil {
+			wechat.UUIDProcessor.UUIDDidConfirm(err)
 			return err
 		}
 	}
 
-	//5.
-	index := strings.LastIndex(redirectURL, "/")
-	if index == -1 {
-		index = len(redirectURL)
-	}
-	wechat.BaseURL = redirectURL[:index]
+	wechat.UUIDProcessor.UUIDDidConfirm(nil)
 
-	// 6.
+	req, _ := http.NewRequest(`GET`, redirectURL, nil)
+
+	// 4.
+	if err = wechat.login(req); err != nil {
+		return err
+	}
+
 	return wechat.init()
 }
 
-func (wechat *WeChat) quickLogin() (string, error) {
+func (wechat *WeChat) cachedInfo() (map[string]interface{}, error) {
 
-	url, err := wechat.cachedLoginURL()
+	cachedInfo := make(map[string]interface{}, 3)
+
+	baseInfo, err := wechat.cachedBaseInfo()
 	if err != nil {
-		return ``, err
+		return nil, err
+	}
+
+	bq := new(BaseRequest)
+	bqInfo := baseInfo[`baseRequest`].(map[string]interface{})
+
+	if did, ok := bqInfo[`DeviceID`].(string); ok {
+		bq.DeviceID = did
+	}
+	if pst, ok := baseInfo[`passTicket`].(string); ok {
+		bq.PassTicket = pst
+	}
+	if skey, ok := bqInfo[`Skey`].(string); ok {
+		bq.Skey = skey
+	}
+	if sid, ok := bqInfo[`Sid`].(string); ok {
+		bq.Wxsid = sid
+	}
+	if uf, ok := bqInfo[`Uin`].(float64); ok {
+		bq.Wxuin = int64(uf)
+	}
+
+	baseInfo[`baseRequest`] = bq
+
+	if err != nil || len(baseInfo) != 3 {
+		return nil, errors.New(`cached baseInfo is invalidate`)
 	}
 
 	cookies, err := wechat.cachedCookies()
-	if err != nil {
-		return ``, err
+	if err != nil || len(cookies) == 0 {
+		return nil, errors.New(`cached cookies is invalidate`)
 	}
 
-	logger.Debug(`quick login flow`)
-
-	req, _ := http.NewRequest(`GET`, url, nil)
-	for _, c := range cookies {
-		req.AddCookie(c)
+	for k, v := range baseInfo {
+		cachedInfo[k] = v
 	}
+	cachedInfo[`cookies`] = cookies
 
-	return url, wechat.login(req)
+	return cachedInfo, nil
 }
 
 func (wechat *WeChat) fetchUUID() (string, error) {
@@ -271,10 +301,15 @@ func (wechat *WeChat) login(req *http.Request) error {
 		return err
 	}
 
-	// added device id
-	wechat.BaseRequest.DeviceID = `e999471493880231`
+	//5.
+	urlStr := req.URL.String()
+	index := strings.LastIndex(urlStr, "/")
+	if index == -1 {
+		index = len(urlStr)
+	}
 
-	wechat.refreshLoginURLCache(req.URL.String())
+	wechat.BaseURL = urlStr[:index]
+	wechat.refreshBaseInfo()
 	wechat.refreshCookieCache(resp.Cookies())
 
 	return nil
@@ -289,10 +324,16 @@ func (wechat *WeChat) init() error {
 		return err
 	}
 
-	resp := new(initResp)
 	apiURI := fmt.Sprintf("%s/webwxinit?%s&%s&r=%s", wechat.BaseURL, wechat.PassTicketKV(), wechat.SkeyKV(), utils.Now())
 
-	if err = wechat.Excute(apiURI, bytes.NewReader(data), resp); err != nil {
+	req, err := http.NewRequest(`POST`, apiURI, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+
+	var resp initResp
+	err = wechat.ExcuteRequest(req, &resp)
+	if err != nil {
 		return err
 	}
 
@@ -351,6 +392,7 @@ func (wechat *WeChat) cachedCookies() ([]*http.Cookie, error) {
 
 	var cookieInterfaces []interface{}
 	err = json.Unmarshal(bs, &cookieInterfaces)
+
 	if err != nil {
 		return nil, err
 	}
@@ -358,23 +400,19 @@ func (wechat *WeChat) cachedCookies() ([]*http.Cookie, error) {
 	var cookies []*http.Cookie
 
 	for _, c := range cookieInterfaces {
-		b, _ := json.Marshal(c)
+		data, _ := json.Marshal(c)
 		var cookie *http.Cookie
-		e := json.Unmarshal(b, cookie)
-		if e == nil {
-			cookies = append(cookies, cookie)
-		}
+		json.Unmarshal(data, &cookie)
+		cookies = append(cookies, cookie)
 	}
 
 	return cookies, nil
 }
 
 func (wechat *WeChat) refreshCookieCache(cookies []*http.Cookie) {
-
 	if len(cookies) == 0 {
 		return
 	}
-
 	b, err := json.Marshal(cookies)
 	if err != nil {
 		logger.Warnf(`refresh cookie error: %v`, err)
@@ -384,16 +422,24 @@ func (wechat *WeChat) refreshCookieCache(cookies []*http.Cookie) {
 	}
 }
 
-func (wechat *WeChat) cachedLoginURL() (string, error) {
+func (wechat *WeChat) cachedBaseInfo() (map[string]interface{}, error) {
 
-	ubs, err := ioutil.ReadFile(baseURLCachePath)
+	ubs, err := ioutil.ReadFile(baseInfoCachePath)
 	if err != nil {
-		return ``, err
+		return nil, err
 	}
-
-	return string(ubs), err
+	var result map[string]interface{}
+	err = json.Unmarshal(ubs, &result)
+	return result, err
 }
 
-func (wechat *WeChat) refreshLoginURLCache(url string) {
-	utils.CreateFile(baseURLCachePath, []byte(url), false)
+func (wechat *WeChat) refreshBaseInfo() {
+	info := make(map[string]interface{}, 3)
+
+	info[`baseURL`] = wechat.BaseURL
+	info[`passTicket`] = wechat.BaseRequest.PassTicket
+	info[`baseRequest`] = wechat.BaseRequest
+
+	data, _ := json.Marshal(info)
+	utils.CreateFile(baseInfoCachePath, data, false)
 }

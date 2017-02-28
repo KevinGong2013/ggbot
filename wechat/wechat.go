@@ -112,6 +112,7 @@ func newWeChat(up UUIDProcessor) (*WeChat, error) {
 
 	baseReq := new(BaseRequest)
 	baseReq.Ret = 1
+	baseReq.DeviceID = `e999471493880231`
 
 	wechat := &WeChat{
 		Client:        client,
@@ -181,8 +182,10 @@ func (wechat *WeChat) ExcuteRequest(req *http.Request, call Caller) error {
 	filename := debugPath + lastP
 
 	if Debug {
-		reqData, _ := httputil.DumpRequest(req, true)
+		reqData, _ := httputil.DumpRequestOut(req, false)
 		utils.CreateFile(filename+`_req.json`, reqData, false)
+		c, _ := json.Marshal(wechat.Client.Jar.Cookies(req.URL))
+		utils.CreateFile(filename+`_req.json`, c, true)
 	}
 
 	resp, err := wechat.Client.Do(req)
@@ -213,6 +216,7 @@ func (wechat *WeChat) ExcuteRequest(req *http.Request, call Caller) error {
 		return call.Error()
 	}
 
+	wechat.refreshBaseInfo()
 	wechat.refreshCookieCache(resp.Cookies())
 
 	return nil
