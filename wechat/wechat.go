@@ -119,7 +119,7 @@ func newWeChat(up UUIDProcessor) (*WeChat, error) {
 		BaseRequest:   baseReq,
 		UUIDProcessor: up,
 		IsLogin:       false,
-		cache:         newCache(`.ggbot`),
+		cache:         newCache(`.ggbot/debug`),
 	}
 
 	return wechat, nil
