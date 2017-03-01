@@ -45,15 +45,15 @@ features:
 [传送门](https://www.golang.org)
 
 ###### 安装`wechat`包
-```
+``` go
 go get github.com/KevinGong2013/wechat
 ```
 ###### clone 源码
-```
+``` go
 git clone https://github.com/KevinGong2013/ggbot.git
 ```
 ###### 编译运行
-```
+``` bash
 cd ggbot
 go build
 ./ggbot
