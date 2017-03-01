@@ -1,204 +1,162 @@
 package main
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
-	"os/signal"
-	"syscall"
 
+	"github.com/KevinGong2013/wechat"
+	"github.com/Sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
-
-	log "github.com/Sirupsen/logrus"
-
-	"github.com/KevinGong2013/ggbot/modules/assistant"
-	"github.com/KevinGong2013/ggbot/modules/echo"
-	"github.com/KevinGong2013/ggbot/modules/gguuid"
-	"github.com/KevinGong2013/ggbot/modules/media"
-	"github.com/KevinGong2013/ggbot/modules/service"
-	"github.com/KevinGong2013/ggbot/modules/tuling"
-	"github.com/KevinGong2013/ggbot/modules/ui"
-	"github.com/KevinGong2013/ggbot/modules/xiaoice"
-	"github.com/KevinGong2013/ggbot/utils"
-	"github.com/KevinGong2013/ggbot/wechat"
 )
 
-var logger = log.WithFields(log.Fields{
-	"module": "main",
+var logger = logrus.WithFields(logrus.Fields{
+	"module": "ggbot",
 })
-
-// Conf ...
-type Conf struct {
-	LogLevel int `yaml:"log-level"`
-	Debug    bool
-	Modules  map[string]map[string]interface{}
-}
 
 var confPath = `conf.yaml`
 
-var version = `0.9.1`
-var date = `2017-02-22`
-
 func main() {
 
-	logger.Infof(`version: %s, date: %s`, version, date)
-
-	tf := log.TextFormatter{}
+	tf := logrus.TextFormatter{}
 	tf.FullTimestamp = true
 	tf.TimestampFormat = `2006-01-02 15:04:05`
-	log.SetFormatter(&tf)
+	logrus.SetFormatter(&tf)
 
-	var conf = &Conf{}
-
-	err := readConf(conf)
-
+	bot, err := wechat.AwakenNewBot(nil)
 	if err != nil {
-		logger.Error(err)
-		logger.Info(`读取配置文件出错，GGBot 将自动生成默认的配置文件`)
+		panic(err)
+	}
 
+	conf, err := readConf()
+	if err != nil {
 		conf, err = createDefaultConf()
 		if err != nil {
 			panic(err)
 		}
 	}
+	logger.Debugf(`%v`, conf)
+	features, _ := conf[`features`].(map[string]interface{})
+	logger.Debugf(`%v`, features)
+	var t *tuling
+	var x *xiaoice
+	var g *guard
+	var a *assisant
 
-	wechat.Debug = conf.Debug
-	switch conf.LogLevel {
-	case 0:
-		log.SetLevel(log.DebugLevel)
-	case 1:
-		log.SetLevel(log.InfoLevel)
-	case 2:
-		log.SetLevel(log.WarnLevel)
-	case 3:
-		log.SetLevel(log.ErrorLevel)
+	tl, _ := features[`tuling`].(map[string]interface{})
+	if tl[`enable`].(bool) {
+		// 添加图灵自动回复
+		t = newTuling(`b6b93435df0e4b71aff460231b89d8eb`, bot)
 	}
 
-	var up wechat.UUIDProcessor
-	if conf.Modules[`gguuid`] != nil {
-		up = gguuid.New()
+	xi, _ := features[`xiaoice`].(map[string]interface{})
+	if xi[`enable`].(bool) {
+		// 添加小冰自动回复
+		x = newXiaoice(bot)
 	}
 
-	wxbot, err := wechat.WakeUp(up)
-	if err != nil {
-		logger.Error(err)
-		return
+	aa, _ := features[`assistant`].(map[string]interface{})
+	if aa[`enable`].(bool) {
+		// 加群欢迎语和简单的签到
+		a = newAssisant(bot)
 	}
 
-	err = registerModules(conf, wxbot)
-	if err != nil {
-		panic(err)
+	gg, _ := features[`guard`].(map[string]interface{})
+	if gg[`enable`].(bool) {
+		// 添加图灵自动回复
+		g = newGuard(bot)
 	}
 
-	waitForExit()
+	bot.Handle(`/msg`, func(evt wechat.Event) {
+		data := evt.Data.(wechat.EventMsgData)
+		t.autoReplay(data)
+		x.autoReplay(data)
+		g.autoAcceptAddFirendRequest(data)
+		a.handle(data)
+	})
+
+	bot.Handle(`/login`, func(arg2 wechat.Event) {
+		isSuccess := arg2.Data.(int) == 1
+		if isSuccess {
+			if cs, err := bot.ContactsByNickName(`小冰`); err == nil {
+				for _, c := range cs {
+					if c.Type == wechat.Offical {
+						x.un = c.UserName // 更新小冰的UserName
+						break
+					}
+				}
+			}
+		}
+	})
+
+	bot.Go()
 }
 
-func readConf(conf *Conf) error {
+func createDefaultConf() (map[string]interface{}, error) {
 
-	file, err := os.Open(confPath)
-	if err != nil {
-		return err
-	}
-
-	buf, err := ioutil.ReadAll(file)
-	if err != nil {
-		return err
-	}
-
-	return yaml.Unmarshal(buf, &conf)
-}
-
-func createDefaultConf() (*Conf, error) {
-
-	conf := &Conf{
-		LogLevel: 0,
-		Debug:    true,
-		Modules: map[string]map[string]interface{}{
-			`assistant`: {
-				`groupName`: `GGBot测试群`,
-				`welcome`:   `大家鼓掌欢迎 👏👏👏`,
+	conf := map[string]interface{}{
+		`features`: map[string]interface{}{
+			`assistant`: map[string]interface{}{
+				`enable`: true,
 			},
-			`echo`:   {},
-			`gguuid`: {},
-			`media`: {
-				`path`: `.ggbot/media`,
+			`guard`: map[string]interface{}{
+				`enable`: true,
 			},
-			`service`: {
-				`msg-webhook`:         `http://127.0.0.1:3288/msg`,
-				`contact-webhook`:     `http://127.0.0.1:3288/contact`,
-				`login-state-webhook`: `http://127.0.0.1:3288/login_state`,
-				`uuid-webhook`:        `http://127.0.0.1:3288/uuid`,
+			`tuling`: map[string]interface{}{
+				`enable`: false,
+				`apikey`: ``,
 			},
-			`storage`: {
-				`path`: `.ggbot/db`,
+			`xiaoice`: map[string]interface{}{
+				`enable`: true,
 			},
-			`tuling`: {
-				`api-key`: `b6b93435df0e4b71aff460231b89d8eb`,
-			},
-			// `ui`:      {},
-			`xiaoice`: {},
 		},
 	}
-
-	buff, err := yaml.Marshal(conf)
+	data, err := yaml.Marshal(conf)
 	if err != nil {
 		return nil, err
 	}
 
-	return conf, utils.CreateFile(confPath, buff, false)
+	return conf, createFile(confPath, data, false)
 }
 
-func registerModules(conf *Conf, bot *wechat.WeChat) error {
+func readConf() (map[string]interface{}, error) {
 
-	// 1. 不能同时注册gguuid和ui
-	if conf.Modules[`ui`] != nil && conf.Modules[`gguuid`] != nil {
-		return errors.New(`[ui]模块和[gguid]模块不能共存，请二选一]`)
+	file, err := os.Open(confPath)
+	if err != nil {
+		return nil, err
 	}
 
-	for k, v := range conf.Modules {
-		switch k {
-		case `assistant`:
-			gn := v[`groupName`].(string)
-			welcome := v[`welcome`].(string)
-			bot.RegisterModule(assistant.NewAssistant(gn, welcome))
-		case `echo`:
-			bot.RegisterModule(echo.New())
-		case `media`:
-			path := v[`path`].(string)
-			d, err := media.NewDownloader(path)
-			if err == nil {
-				bot.RegisterModule(d)
-			} else {
-				logger.Warnf(`regist media module failed err: %v`, err)
-			}
-		case `service`:
-			msgWebhook := v[`msg-webhook`].(string)
-			contactWebhook := v[`contact-webhook`].(string)
-			loginWebhook := v[`login-state-webhook`].(string)
-			uuidWebhook := v[`uuid-webhook`].(string)
-			bot.RegisterModule(service.NewWrapper(msgWebhook, contactWebhook, loginWebhook, uuidWebhook))
-		case `tuling`:
-			apiKey := v[`api-key`].(string)
-			if len(apiKey) == 0 {
-				logger.Warn(`regsit tuling module failed api-key is needed`)
-			} else {
-				bot.RegisterModule(tuling.NewBrain(apiKey))
-			}
-		case `ui`:
-			path := v[`path`].(string)
-			u := ui.NewUI(path)
-			bot.RegisterModule(u)
-			go u.Loop()
-		case `xiaoice`:
-			bot.RegisterModule(xiaoice.NewBrain())
+	buf, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	err = yaml.Unmarshal(buf, &result)
+	return result, err
+}
+
+func createFile(name string, data []byte, isAppend bool) (err error) {
+
+	defer func() {
+		if err != nil {
+			logger.Error(err)
 		}
+	}()
+
+	oflag := os.O_CREATE | os.O_WRONLY
+	if isAppend {
+		oflag |= os.O_APPEND
+	} else {
+		oflag |= os.O_TRUNC
 	}
 
-	return nil
-}
+	file, err := os.OpenFile(name, oflag, 0666)
+	if err != nil {
+		return
+	}
+	defer file.Close()
 
-func waitForExit() os.Signal {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGTERM)
-	return <-c
+	_, err = file.Write(data)
+
+	return
 }
