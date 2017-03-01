@@ -89,6 +89,8 @@ func (c *cache) updateContact(contact *Contact) {
 }
 
 func (wechat *WeChat) syncContacts(cts []map[string]interface{}) {
+	wechat.cache.Lock()
+	defer wechat.cache.Unlock()
 
 	count := len(cts)
 
@@ -248,6 +250,10 @@ func (wechat *WeChat) syncContacts(cts []map[string]interface{}) {
 }
 
 func (wechat *WeChat) appendContacts(cts []map[string]interface{}) {
+
+	wechat.cache.Lock()
+	defer wechat.cache.Unlock()
+
 	c := wechat.cache
 	for _, v := range cts {
 		nc, _ := newContact(v)
@@ -300,8 +306,6 @@ func (c *cache) contactByUserName(nn string) (*Contact, error) {
 }
 
 func (c *cache) writeToFile() error {
-	c.Lock()
-	defer c.Unlock()
 
 	buf1, _ := json.Marshal(c.ggmap)
 	buf2, _ := json.Marshal(c.nickGG)
