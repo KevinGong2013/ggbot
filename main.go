@@ -114,8 +114,8 @@ func main() {
 func createDefaultConf() (map[string]interface{}, error) {
 
 	conf := map[string]interface{}{
+		`showQRCodeOnTerminal`: false,
 		`features`: map[string]interface{}{
-			`showQRCodeOnTerminal`: false,
 			`assistant`: map[string]interface{}{
 				`enable`:    true,
 				`ownerGGID`: `46feef79-ac7d-46df-9e46-302502dfc436`,
