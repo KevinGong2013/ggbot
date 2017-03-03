@@ -27,7 +27,7 @@ type Config struct {
 		}
 		Tuling struct {
 			Enable bool
-			APIKey string
+			Key    string
 		}
 		Xiaoice struct {
 			Enable bool
@@ -49,7 +49,7 @@ func main() {
 	_, err := os.Stat(path)
 	if !(err == nil || os.IsExist(err)) {
 		config.ShowQRCodeOnTerminal = false
-		config.Features.Tuling.APIKey = `b6b93435df0e4b71aff460231b89d8eb`
+		config.Features.Tuling.Key = `b6b93435df0e4b71aff460231b89d8eb`
 		config.Features.Tuling.Enable = true
 		data, _ := yaml.Marshal(config)
 		createFile(path, data)
@@ -71,7 +71,7 @@ func main() {
 		panic(err)
 	}
 
-	t := newTuling(config.Features.Tuling.APIKey, bot)
+	t := newTuling(config.Features.Tuling.Key, bot)
 	x := newXiaoice(bot)
 	a := newAssisant(bot, config.Features.Assistant.OwnerGGID)
 	g := newGuard(bot)
