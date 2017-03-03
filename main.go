@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/KevinGong2013/ggbot/uuidprocessor"
 	"github.com/KevinGong2013/wechat"
 	"github.com/Sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
@@ -22,17 +23,23 @@ func main() {
 	tf.TimestampFormat = `2006-01-02 15:04:05`
 	logrus.SetFormatter(&tf)
 
-	bot, err := wechat.AwakenNewBot(nil)
-	if err != nil {
-		panic(err)
-	}
-
 	conf, err := readConf()
 	if err != nil {
 		conf, err = createDefaultConf()
 		if err != nil {
 			panic(err)
 		}
+	}
+
+	options := wechat.DefaultConfigure()
+
+	if conf[`showQRCodeOnTerminal`].(bool) {
+		options.Processor = uuidprocessor.New()
+	}
+
+	bot, err := wechat.AwakenNewBot(options)
+	if err != nil {
+		panic(err)
 	}
 
 	features, _ := conf[`features`].(map[interface{}]interface{})
