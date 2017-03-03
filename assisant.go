@@ -1,18 +1,47 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/KevinGong2013/wechat"
 )
 
 type assisant struct {
-	bot *wechat.WeChat
+	bot       *wechat.WeChat
+	ownerGGID string
 }
 
-func newAssisant(bot *wechat.WeChat) *assisant {
-	return &assisant{bot}
+func newAssisant(bot *wechat.WeChat, ownerGGID string) *assisant {
+	return &assisant{bot, ownerGGID}
+}
+
+func (a *assisant) delMember(groupUserName, memberUserName string) error {
+	ps := map[string]interface{}{
+		`DelMemberList`: memberUserName,
+		`ChatRoomName`:  groupUserName,
+		`BaseRequest`:   a.bot.BaseRequest,
+	}
+	data, _ := json.Marshal(ps)
+
+	url := fmt.Sprintf(`%s/webwxupdatechatroom?fun=delmember`, a.bot.BaseURL)
+
+	var resp wechat.Response
+
+	err := a.bot.Excute(url, bytes.NewReader(data), &resp)
+
+	if err != nil {
+		return err
+	}
+
+	if resp.IsSuccess() {
+		return nil
+	}
+
+	return fmt.Errorf(`delete %s on %s failed`, memberUserName, groupUserName)
 }
 
 func (a *assisant) handle(msg wechat.EventMsgData) {
@@ -26,6 +55,28 @@ func (a *assisant) handle(msg wechat.EventMsgData) {
 		} else if strings.Contains(msg.Content, `签到`) {
 			if c, err := a.bot.ContactByUserName(msg.SenderUserName); err == nil {
 				a.bot.SendTextMsg(fmt.Sprintf(`%s 完成了签到`, c.NickName), msg.FromUserName)
+			}
+		}
+
+		// 群主踢人
+		if msg.SenderGGID == a.ownerGGID && strings.HasPrefix(msg.Content, `滚蛋`) {
+			gun := msg.FromUserName
+			if msg.IsSendedByMySelf {
+				gun = msg.ToUserName
+			}
+			nn := strings.Replace(msg.Content, `滚蛋`, ``, 1)
+			if members, err := a.bot.MembersOfGroup(gun); err == nil {
+				for _, c := range members {
+					logger.Debug(c.NickName)
+					if c.NickName == nn {
+						a.bot.SendTextMsg(nn+` 送你免费飞机票`, gun)
+						time.Sleep(3 * time.Second)
+						err := a.delMember(gun, c.UserName)
+						if err != nil {
+							a.bot.SendTextMsg(`暂时不T你把`, gun)
+						}
+					}
+				}
 			}
 		}
 	}

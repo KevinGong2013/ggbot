@@ -34,49 +34,62 @@ func main() {
 			panic(err)
 		}
 	}
-	logger.Debugf(`%v`, conf)
-	features, _ := conf[`features`].(map[string]interface{})
-	logger.Debugf(`%v`, features)
+
+	features, _ := conf[`features`].(map[interface{}]interface{})
+
 	var t *tuling
 	var x *xiaoice
 	var g *guard
 	var a *assisant
 
-	tl, _ := features[`tuling`].(map[string]interface{})
+	tl, _ := features[`tuling`].(map[interface{}]interface{})
 	if tl[`enable`].(bool) {
-		// 添加图灵自动回复
-		t = newTuling(`b6b93435df0e4b71aff460231b89d8eb`, bot)
+		if ak, ok := tl[`api-key`].(string); ok {
+			// 添加图灵自动回复
+			t = newTuling(ak, bot)
+		}
 	}
 
-	xi, _ := features[`xiaoice`].(map[string]interface{})
+	xi, _ := features[`xiaoice`].(map[interface{}]interface{})
 	if xi[`enable`].(bool) {
 		// 添加小冰自动回复
 		x = newXiaoice(bot)
 	}
 
-	aa, _ := features[`assistant`].(map[string]interface{})
+	aa, _ := features[`assistant`].(map[interface{}]interface{})
 	if aa[`enable`].(bool) {
-		// 加群欢迎语和简单的签到
-		a = newAssisant(bot)
+		if owner, ok := aa[`ownerGGID`].(string); ok {
+			// 加群欢迎语和简单的签到
+			a = newAssisant(bot, owner)
+		}
 	}
 
-	gg, _ := features[`guard`].(map[string]interface{})
+	gg, _ := features[`guard`].(map[interface{}]interface{})
 	if gg[`enable`].(bool) {
 		// 添加图灵自动回复
 		g = newGuard(bot)
 	}
 
 	bot.Handle(`/msg`, func(evt wechat.Event) {
+		logger.Debug(`begin handle [/msg]`)
 		data := evt.Data.(wechat.EventMsgData)
-		t.autoReplay(data)
-		x.autoReplay(data)
-		g.autoAcceptAddFirendRequest(data)
-		a.handle(data)
+		if t != nil {
+			go t.autoReplay(data)
+		}
+		if x != nil {
+			go x.autoReplay(data)
+		}
+		if g != nil {
+			go g.autoAcceptAddFirendRequest(data)
+		}
+		if a != nil {
+			go a.handle(data)
+		}
 	})
 
 	bot.Handle(`/login`, func(arg2 wechat.Event) {
 		isSuccess := arg2.Data.(int) == 1
-		if isSuccess {
+		if isSuccess && x != nil {
 			if cs, err := bot.ContactsByNickName(`小冰`); err == nil {
 				for _, c := range cs {
 					if c.Type == wechat.Offical {
@@ -96,7 +109,8 @@ func createDefaultConf() (map[string]interface{}, error) {
 	conf := map[string]interface{}{
 		`features`: map[string]interface{}{
 			`assistant`: map[string]interface{}{
-				`enable`: true,
+				`enable`:    true,
+				`ownerGGID`: `46feef79-ac7d-46df-9e46-302502dfc436`,
 			},
 			`guard`: map[string]interface{}{
 				`enable`: true,
