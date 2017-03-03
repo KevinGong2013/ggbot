@@ -49,8 +49,8 @@ func main() {
 	_, err := os.Stat(path)
 	if !(err == nil || os.IsExist(err)) {
 		config.ShowQRCodeOnTerminal = false
-		config.Features.Tuling.Key = `b6b93435df0e4b71aff460231b89d8eb`
-		config.Features.Tuling.Enable = true
+		config.Features.Tuling.Key = ``
+		config.Features.Tuling.Enable = false
 		data, _ := yaml.Marshal(config)
 		createFile(path, data)
 	}
