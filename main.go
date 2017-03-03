@@ -7,14 +7,35 @@ import (
 	"github.com/KevinGong2013/ggbot/uuidprocessor"
 	"github.com/KevinGong2013/wechat"
 	"github.com/Sirupsen/logrus"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 var logger = logrus.WithFields(logrus.Fields{
 	"module": "ggbot",
 })
 
-var confPath = `conf.yaml`
+// Config ..
+type Config struct {
+	ShowQRCodeOnTerminal bool
+	Features             struct {
+		Assistant struct {
+			Enable    bool
+			OwnerGGID string
+		}
+		Guard struct {
+			Enable bool
+		}
+		Tuling struct {
+			Enable bool
+			APIKey string
+		}
+		Xiaoice struct {
+			Enable bool
+		}
+	}
+}
+
+var config = Config{}
 
 func main() {
 
@@ -22,18 +43,26 @@ func main() {
 	tf.FullTimestamp = true
 	tf.TimestampFormat = `2006-01-02 15:04:05`
 	logrus.SetFormatter(&tf)
+	logrus.SetLevel(logrus.DebugLevel)
 
-	conf, err := readConf()
+	path := `conf.yaml`
+	_, err := os.Stat(path)
+	if !(err == nil || os.IsExist(err)) {
+		config.ShowQRCodeOnTerminal = false
+		config.Features.Tuling.APIKey = `b6b93435df0e4b71aff460231b89d8eb`
+		config.Features.Tuling.Enable = true
+		data, _ := yaml.Marshal(config)
+		createFile(path, data)
+	}
+	data, _ := ioutil.ReadFile(path)
+	err = yaml.Unmarshal(data, &config)
 	if err != nil {
-		conf, err = createDefaultConf()
-		if err != nil {
-			panic(err)
-		}
+		logger.Error(`配置文件不正确`)
 	}
 
 	options := wechat.DefaultConfigure()
 
-	if conf[`showQRCodeOnTerminal`].(bool) {
+	if config.ShowQRCodeOnTerminal {
 		options.Processor = uuidprocessor.New()
 	}
 
@@ -42,54 +71,24 @@ func main() {
 		panic(err)
 	}
 
-	features, _ := conf[`features`].(map[interface{}]interface{})
-
-	var t *tuling
-	var x *xiaoice
-	var g *guard
-	var a *assisant
-
-	tl, _ := features[`tuling`].(map[interface{}]interface{})
-	if tl[`enable`].(bool) {
-		if ak, ok := tl[`api-key`].(string); ok {
-			// 添加图灵自动回复
-			t = newTuling(ak, bot)
-		}
-	}
-
-	xi, _ := features[`xiaoice`].(map[interface{}]interface{})
-	if xi[`enable`].(bool) {
-		// 添加小冰自动回复
-		x = newXiaoice(bot)
-	}
-
-	aa, _ := features[`assistant`].(map[interface{}]interface{})
-	if aa[`enable`].(bool) {
-		if owner, ok := aa[`ownerGGID`].(string); ok {
-			// 加群欢迎语和简单的签到
-			a = newAssisant(bot, owner)
-		}
-	}
-
-	gg, _ := features[`guard`].(map[interface{}]interface{})
-	if gg[`enable`].(bool) {
-		// 添加图灵自动回复
-		g = newGuard(bot)
-	}
+	t := newTuling(config.Features.Tuling.APIKey, bot)
+	x := newXiaoice(bot)
+	a := newAssisant(bot, config.Features.Assistant.OwnerGGID)
+	g := newGuard(bot)
 
 	bot.Handle(`/msg`, func(evt wechat.Event) {
 		logger.Debug(`begin handle [/msg]`)
 		data := evt.Data.(wechat.EventMsgData)
-		if t != nil {
+		if config.Features.Tuling.Enable {
 			go t.autoReplay(data)
 		}
-		if x != nil {
+		if config.Features.Xiaoice.Enable {
 			go x.autoReplay(data)
 		}
-		if g != nil {
+		if config.Features.Guard.Enable {
 			go g.autoAcceptAddFirendRequest(data)
 		}
-		if a != nil {
+		if config.Features.Assistant.Enable {
 			go a.handle(data)
 		}
 	})
@@ -111,53 +110,7 @@ func main() {
 	bot.Go()
 }
 
-func createDefaultConf() (map[string]interface{}, error) {
-
-	conf := map[string]interface{}{
-		`showQRCodeOnTerminal`: false,
-		`features`: map[string]interface{}{
-			`assistant`: map[string]interface{}{
-				`enable`:    true,
-				`ownerGGID`: `46feef79-ac7d-46df-9e46-302502dfc436`,
-			},
-			`guard`: map[string]interface{}{
-				`enable`: true,
-			},
-			`tuling`: map[string]interface{}{
-				`enable`: false,
-				`apikey`: ``,
-			},
-			`xiaoice`: map[string]interface{}{
-				`enable`: true,
-			},
-		},
-	}
-	data, err := yaml.Marshal(conf)
-	if err != nil {
-		return nil, err
-	}
-
-	return conf, createFile(confPath, data, false)
-}
-
-func readConf() (map[string]interface{}, error) {
-
-	file, err := os.Open(confPath)
-	if err != nil {
-		return nil, err
-	}
-
-	buf, err := ioutil.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-	err = yaml.Unmarshal(buf, &result)
-	return result, err
-}
-
-func createFile(name string, data []byte, isAppend bool) (err error) {
+func createFile(name string, data []byte) (err error) {
 
 	defer func() {
 		if err != nil {
@@ -165,12 +118,7 @@ func createFile(name string, data []byte, isAppend bool) (err error) {
 		}
 	}()
 
-	oflag := os.O_CREATE | os.O_WRONLY
-	if isAppend {
-		oflag |= os.O_APPEND
-	} else {
-		oflag |= os.O_TRUNC
-	}
+	oflag := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
 
 	file, err := os.OpenFile(name, oflag, 0666)
 	if err != nil {
