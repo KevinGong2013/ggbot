@@ -4,11 +4,9 @@
 
 ### 下载地址
 
-[window 版本](https://github.com/KevinGong2013/ggbot/raw/master/release/GGBot-windows%20v1.0.0-rc.exe)
+[window 版本](https://github.com/KevinGong2013/ggbot/raw/master/release/GGBot-windows.exe)
 
-[mac os x 版本](https://github.com/KevinGong2013/ggbot/raw/master/release/GGBot-mac%20v1.0.0-rc)
-
-[linux 版本](https://github.com/KevinGong2013/ggbot/raw/master/release/GGBot-linux%20v1.0.0-rc)
+> mac os x 和 linux 建议自己编译
 
 ### 自定义
 
