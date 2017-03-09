@@ -4,7 +4,7 @@
 
 ### 下载地址
 
-[window 版本](https://github.com/KevinGong2013/ggbot/raw/master/release/GGBot-windows.exe)
+[window 版本](http://oap91rhcb.bkt.clouddn.com/GGBot-windows.exe)
 
 > mac os x 和 linux 建议自己编译
 
