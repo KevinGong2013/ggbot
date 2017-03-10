@@ -18,6 +18,7 @@ var logger = logrus.WithFields(logrus.Fields{
 // Config ..
 type Config struct {
 	ShowQRCodeOnTerminal bool
+	FuzzyDiff            bool
 	Features             struct {
 		Assistant struct {
 			Enable    bool
@@ -58,6 +59,7 @@ func main() {
 		config.ShowQRCodeOnTerminal = false
 		config.Features.Tuling.Key = ``
 		config.Features.Tuling.Enable = false
+		config.FuzzyDiff = true
 		data, _ := yaml.Marshal(config)
 		createFile(path, data)
 	}
@@ -68,6 +70,9 @@ func main() {
 	}
 
 	options := wechat.DefaultConfigure()
+
+	// 是否开启联系人模糊匹配
+	options.FuzzyDiff = config.FuzzyDiff
 
 	if config.ShowQRCodeOnTerminal {
 		options.Processor = uuidprocessor.New()
