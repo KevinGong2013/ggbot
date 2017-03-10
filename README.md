@@ -19,7 +19,7 @@
 ``` yaml
 showqrcodeonterminal: false #是否在命令行中显示二维码
 fuzzydiff: true #联系人对比是否启用模糊匹配
-uniquegroupmember: true #是否为群成员生成gguid
+uniquegroupmember: true #是否为群成员生成ggid
 features:
   assistant:
     enable: false
