@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/KevinGong2013/ggbot/service"
 	"github.com/KevinGong2013/ggbot/uuidprocessor"
 	"github.com/KevinGong2013/wechat"
 	"github.com/Sirupsen/logrus"
@@ -31,6 +32,12 @@ type Config struct {
 		}
 		Xiaoice struct {
 			Enable bool
+		}
+		WebhookService struct {
+			Enable            bool
+			MsgWebhook        string
+			LoginStateWebhook string
+			UUIDWebhook       string
 		}
 	}
 }
@@ -66,6 +73,15 @@ func main() {
 		options.Processor = uuidprocessor.New()
 	}
 
+	var webhookService *service.Wrapper
+	if config.Features.WebhookService.Enable {
+		webhookService = service.NewWrapper(config.Features.WebhookService.UUIDWebhook)
+	}
+
+	if webhookService != nil && len(config.Features.WebhookService.UUIDWebhook) > 0 {
+		options.Processor = webhookService
+	}
+
 	bot, err := wechat.AwakenNewBot(options)
 	if err != nil {
 		panic(err)
@@ -91,6 +107,9 @@ func main() {
 		if config.Features.Assistant.Enable {
 			go a.handle(data)
 		}
+		if webhookService != nil && len(config.Features.WebhookService.MsgWebhook) > 0 {
+			go webhookService.Forward(config.Features.WebhookService.MsgWebhook, data)
+		}
 	})
 
 	bot.Handle(`/login`, func(arg2 wechat.Event) {
@@ -104,6 +123,9 @@ func main() {
 					}
 				}
 			}
+		}
+		if webhookService != nil && len(config.Features.WebhookService.LoginStateWebhook) > 0 {
+			go webhookService.Forward(config.Features.WebhookService.LoginStateWebhook, arg2.Data)
 		}
 	})
 
