@@ -19,6 +19,7 @@ var logger = logrus.WithFields(logrus.Fields{
 type Config struct {
 	ShowQRCodeOnTerminal bool
 	FuzzyDiff            bool
+	UniqueGroupMember    bool
 	Features             struct {
 		Assistant struct {
 			Enable    bool
@@ -73,6 +74,7 @@ func main() {
 
 	// 是否开启联系人模糊匹配
 	options.FuzzyDiff = config.FuzzyDiff
+	options.UniqueGroupMember = config.UniqueGroupMember
 
 	if config.ShowQRCodeOnTerminal {
 		options.Processor = uuidprocessor.New()
