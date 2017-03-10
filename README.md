@@ -17,16 +17,24 @@
 ##### 如何使用图灵机器人
 机器人在运行过一次以后会在可执行文件的统一目录生成 `conf.yaml`,  打开这个文件
 ``` yaml
+showqrcodeonterminal: false #是否在命令行中显示二维码
+fuzzydiff: true #联系人对比是否启用模糊匹配
 features:
   assistant:
-    enable: true
+    enable: false
+    ownerggid: ""
   guard:
-    enable: true
+    enable: false
   tuling:
-    apikey: "" #这里填写你申请到的图灵机器人key
-    enable: true # 将这里改为true
+    enable: false
+    key: ""
   xiaoice:
-    enable: true
+    enable: false
+  webhookservice:
+    enable: false
+    msgwebhook: ""
+    loginstatewebhook: ""
+    uuidwebhook: ""
 ```
 修改下面2行
 ``` yaml
