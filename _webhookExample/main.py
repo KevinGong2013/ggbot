@@ -19,5 +19,5 @@ server = HTTPServer(('', 3288), WebhookHandler)
 
 print 'Started httpserver on port 3288'
 
-#Wait forever for incoming htto requests
+#Wait forever for incoming http requests
 server.serve_forever()
