@@ -20,16 +20,16 @@ func newGuard(bot *wechat.WeChat) *guard {
 }
 
 // AddFriend ...
-func (g *guard) addFriend(name, content string) error {
-	return g.verifyUser(name, content, 2)
+func (g *guard) addFriend(username, content string) error {
+	return g.verifyUser(username, content, 2)
 }
 
 // AcceptAddFriend ...
-func (g *guard) acceptAddFriend(name, content string) error {
-	return g.verifyUser(name, content, 3)
+func (g *guard) acceptAddFriend(username, content string) error {
+	return g.verifyUser(username, content, 3)
 }
 
-func (g *guard) verifyUser(name, content string, status int) error {
+func (g *guard) verifyUser(username, content string, status int) error {
 
 	url := fmt.Sprintf(`%s/webwxverifyuser?r=%s&%s`, g.bot.BaseURL, strconv.FormatInt(time.Now().Unix(), 10), g.bot.PassTicketKV())
 
@@ -38,7 +38,7 @@ func (g *guard) verifyUser(name, content string, status int) error {
 		`Opcode`:             status,
 		`VerifyUserListSize`: 1,
 		`VerifyUserList`: map[string]string{
-			`Value`:            name,
+			`Value`:            username,
 			`VerifyUserTicket`: ``,
 		},
 		`VerifyContent`:  content,
