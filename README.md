@@ -1,6 +1,8 @@
 # GGBot
 
 一个牛逼的微信机器人，非常适合非技术人员自由定制
+### 先看个视频
+[GGBot 演示](http://7xnowv.com1.z0.glb.clouddn.com/ggbot-demo.mp4)
 
 ### 下载地址
 
