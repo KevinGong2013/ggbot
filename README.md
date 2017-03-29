@@ -73,6 +73,12 @@ go build
 	1.github issue (推荐)
 	2.qq 群：609776708
 
+### 常见问题
+
+##### 0x00 
+  Q: windows 系统编译运行，cmd显示不正常改怎么办？  
+  A: [Enable ANSI colors in Windows command prompt](https://web.liferay.com/web/igor.spasic/blog/-/blogs/enable-ansi-colors-in-windows-command-prompt)
+
 ## License
 
     The code in this repository is licensed under the Apache License, Version 2.0 (the "License");
