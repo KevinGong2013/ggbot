@@ -76,7 +76,7 @@ go build
 ### 常见问题
 
 ##### 0x00 
-  Q: windows 系统编译运行，cmd显示不正常改怎么办？  
+  Q: windows 系统编译运行，cmd显示不正常该怎么办？  
   A: [Enable ANSI colors in Windows command prompt](https://web.liferay.com/web/igor.spasic/blog/-/blogs/enable-ansi-colors-in-windows-command-prompt)
 
 ## License
