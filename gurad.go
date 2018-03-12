@@ -51,7 +51,7 @@ func (g *guard) verifyUser(username, content string, status int) error {
 
 	var resp wechat.Response
 
-	err := g.bot.Excute(url, bytes.NewReader(bs), &resp)
+	err := g.bot.Execute(url, bytes.NewReader(bs), &resp)
 	if err != nil {
 		return err
 	}

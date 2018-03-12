@@ -10,16 +10,16 @@ import (
 	"github.com/KevinGong2013/wechat"
 )
 
-type assisant struct {
-	bot       *wechat.WeChat
-	ownerGGID string
+type assistant struct {
+	bot      *wechat.WeChat
+	username string
 }
 
-func newAssisant(bot *wechat.WeChat, ownerGGID string) *assisant {
-	return &assisant{bot, ownerGGID}
+func newAssistant(bot *wechat.WeChat, username string) *assistant {
+	return &assistant{bot, username}
 }
 
-func (a *assisant) delMember(groupUserName, memberUserName string) error {
+func (a *assistant) delMember(groupUserName, memberUserName string) error {
 	ps := map[string]interface{}{
 		`DelMemberList`: memberUserName,
 		`ChatRoomName`:  groupUserName,
@@ -31,7 +31,7 @@ func (a *assisant) delMember(groupUserName, memberUserName string) error {
 
 	var resp wechat.Response
 
-	err := a.bot.Excute(url, bytes.NewReader(data), &resp)
+	err := a.bot.Execute(url, bytes.NewReader(data), &resp)
 
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (a *assisant) delMember(groupUserName, memberUserName string) error {
 	return fmt.Errorf(`delete %s on %s failed`, memberUserName, groupUserName)
 }
 
-func (a *assisant) handle(msg wechat.EventMsgData) {
+func (a *assistant) handle(msg wechat.EventMsgData) {
 	if msg.IsGroupMsg {
 		if msg.MsgType == 10000 && strings.Contains(msg.Content, `加入群聊`) {
 			nn, err := search(msg.Content, `"`, `"通过`)
@@ -53,15 +53,14 @@ func (a *assisant) handle(msg wechat.EventMsgData) {
 			}
 			a.bot.SendTextMsg(`欢迎【`+nn+`】加入群聊`, msg.FromUserName)
 		} else if strings.Contains(msg.Content, `签到`) {
-			if c, err := a.bot.ContactByUserName(msg.SenderUserName); err == nil {
-				a.bot.SendTextMsg(fmt.Sprintf(`%s 完成了签到`, c.NickName), msg.FromUserName)
-			}
+			c := a.bot.ContactByUserName(msg.SenderUserName)
+			a.bot.SendTextMsg(fmt.Sprintf(`%s 完成了签到`, c.NickName), msg.FromUserName)
 		}
 
 		// 群主踢人
-		if msg.SenderGGID == a.ownerGGID && strings.HasPrefix(msg.Content, `滚蛋`) {
+		if msg.SenderUserName == a.username && strings.HasPrefix(msg.Content, `滚蛋`) {
 			gun := msg.FromUserName
-			if msg.IsSendedByMySelf {
+			if msg.IsSentByMySelf {
 				gun = msg.ToUserName
 			}
 			nn := strings.Replace(msg.Content, `滚蛋`, ``, 1)

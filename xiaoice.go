@@ -20,7 +20,7 @@ func newXiaoice(wx *wx.WeChat) *xiaoice {
 }
 
 func (x *xiaoice) autoReplay(msg wx.EventMsgData) {
-	if msg.IsSendedByMySelf {
+	if msg.IsSentByMySelf {
 		return
 	}
 	if msg.FromUserName == x.un { // 小冰发来的消息
@@ -42,7 +42,7 @@ func (x *xiaoice) autoReplay(msg wx.EventMsgData) {
 		} else {
 			x.bot.SendTextMsg(msg.Content, to)
 		}
-	} else if !msg.IsSendedByMySelf { // 转发别人的消息到小冰
+	} else if !msg.IsSentByMySelf { // 转发别人的消息到小冰
 		var err error
 		if msg.IsMediaMsg {
 			if path, e := x.bot.DownloadMedia(msg.MediaURL, msg.OriginalMsg[`MsgId`].(string)); e == nil {

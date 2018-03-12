@@ -19,16 +19,16 @@ func newTuling(key string, bot *wechat.WeChat) *tuling {
 }
 
 func (t *tuling) autoReplay(data wechat.EventMsgData) {
-	if data.IsSendedByMySelf {
-		return
-	}
-	replay, err := t.response(data.Content, data.FromUserName, data.FromGGID)
-	if err != nil {
-		logger.Error(err)
-		t.bot.SendTextMsg(`你接着说 ... `, data.FromUserName)
-	} else {
-		t.bot.SendTextMsg(replay, data.FromUserName)
-	}
+	// if data.IsSendedByMySelf {
+	// 	return
+	// }
+	// replay, err := t.response(data.Content, data.FromUserName, data.FromGGID)
+	// if err != nil {
+	// 	logger.Error(err)
+	// 	t.bot.SendTextMsg(`你接着说 ... `, data.FromUserName)
+	// } else {
+	// 	t.bot.SendTextMsg(replay, data.FromUserName)
+	// }
 }
 
 func (t *tuling) response(msg, to, userid string) (string, error) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	log "github.com/Sirupsen/logrus"
-	qrcode "github.com/skip2/go-qrcode"
+	"github.com/skip2/go-qrcode"
 )
 
 const (
@@ -24,7 +24,7 @@ func New() *UUIDProcessor {
 	return &UUIDProcessor{}
 }
 
-// ProcessUUID impolements UUIDProcessor interface
+// ProcessUUID implements UUIDProcessor interface
 func (up *UUIDProcessor) ProcessUUID(uuid string) error {
 
 	content := fmt.Sprintf(`https://login.weixin.qq.com/l/%s`, uuid)
@@ -39,7 +39,7 @@ func (up *UUIDProcessor) ProcessUUID(uuid string) error {
 	return nil
 }
 
-// UUIDDidConfirm impolements UUIDProcessor interface
+// UUIDDidConfirm implements UUIDProcessor interface
 func (up *UUIDProcessor) UUIDDidConfirm(err error) {
 	if err != nil {
 		logger.Errorf(`above QRCODE has been invalidated`)
