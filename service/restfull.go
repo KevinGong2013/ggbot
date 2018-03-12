@@ -44,20 +44,20 @@ func NewWrapper(uuidWebhookURL string) *Wrapper {
 
 func (w *Wrapper) initService() {
 
-	w.r.Get(`/contacts/:nickName`, func(writer http.ResponseWriter, req *http.Request) {
-		if w.wx == nil {
-			http.Error(writer, `wechat did logout`, 500)
-		} else {
-			nn := chi.URLParam(req, `nickName`)
-			contacts, err := w.wx.ContactsByNickName(nn)
-			if err != nil {
-				http.Error(writer, `not found contact`, 404)
-			} else {
-				bs, _ := json.Marshal(contacts)
-				writer.Write(bs)
-			}
-		}
-	})
+	// w.r.Get(`/contacts/:nickName`, func(writer http.ResponseWriter, req *http.Request) {
+	// 	if w.wx == nil {
+	// 		http.Error(writer, `wechat did logout`, 500)
+	// 	} else {
+	// 		nn := chi.URLParam(req, `nickName`)
+	// 		contacts, err := w.wx.ContactsByNickName(nn)
+	// 		if err != nil {
+	// 			http.Error(writer, `not found contact`, 404)
+	// 		} else {
+	// 			bs, _ := json.Marshal(contacts)
+	// 			writer.Write(bs)
+	// 		}
+	// 	}
+	// })
 
 	w.r.Post(`/msg`, func(writer http.ResponseWriter, req *http.Request) {
 		if w.wx == nil {
