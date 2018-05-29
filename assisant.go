@@ -60,7 +60,7 @@ func (a *assistant) handle(msg wechat.EventMsgData) {
 		// 群主踢人
 		if msg.SenderUserName == a.username && strings.HasPrefix(msg.Content, `滚蛋`) {
 			gun := msg.FromUserName
-			if msg.IsSentByMySelf {
+			if msg.IsSendedByMySelf {
 				gun = msg.ToUserName
 			}
 			nn := strings.Replace(msg.Content, `滚蛋`, ``, 1)
