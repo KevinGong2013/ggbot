@@ -19,25 +19,25 @@ func newTuling(key string, bot *wechat.WeChat) *tuling {
 }
 
 func (t *tuling) autoReplay(data wechat.EventMsgData) {
-	// if data.IsSendedByMySelf {
-	// 	return
-	// }
-	// replay, err := t.response(data.Content, data.FromUserName, data.FromGGID)
-	// if err != nil {
-	// 	logger.Error(err)
-	// 	t.bot.SendTextMsg(`你接着说 ... `, data.FromUserName)
-	// } else {
-	// 	t.bot.SendTextMsg(replay, data.FromUserName)
-	// }
+	if data.IsSendedByMySelf {
+		return
+	}
+	replay, err := t.response(data.Content, data.FromUserName)
+	if err != nil {
+		logger.Error(err)
+		t.bot.SendTextMsg(`你接着说 ... `, data.FromUserName)
+	} else {
+		t.bot.SendTextMsg(replay, data.FromUserName)
+	}
 }
 
-func (t *tuling) response(msg, to, userid string) (string, error) {
+func (t *tuling) response(msg, to string) (string, error) {
 
 	values := url.Values{}
 
 	values.Add(`key`, t.key)
 	values.Add(`info`, msg)
-	values.Add(`userid`, userid)
+	values.Add(`userid`, to)
 
 	resp, err := http.PostForm(`http://www.tuling123.com/openapi/api`, values)
 	if err != nil {
@@ -66,7 +66,7 @@ func (t *tuling) response(msg, to, userid string) (string, error) {
 		` + url, nil
 	}
 
-	logger.Errorf(`info: [%s], userid: [%s]`, msg, userid)
+	logger.Errorf(`info: [%s], userid: [%s]`, msg, to)
 	logger.Error(result)
 	return ``, errors.New(`tuling api unkonw error`)
 }
